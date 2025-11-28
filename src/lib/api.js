@@ -1,0 +1,70 @@
+export async function addLog(userId, logData) {
+  const response = await fetch('/api/logs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(logData)
+  });
+  if (!response.ok) throw new Error('Failed to add log');
+  return response.json();
+}
+
+export async function updateLog(logId, userId, logData) {
+  const response = await fetch(`/api/logs/${logId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(logData)
+  });
+  if (!response.ok) throw new Error('Failed to update log');
+  return response.json();
+}
+
+export async function deleteLog(logId, userId) {
+  const response = await fetch(`/api/logs/${logId}`, {
+    method: 'DELETE'
+  });
+  if (!response.ok) throw new Error('Failed to delete log');
+  return true;
+}
+
+export async function getLogs(userId) {
+  const response = await fetch('/api/logs');
+  if (!response.ok) throw new Error('Failed to fetch logs');
+  return response.json();
+}
+
+export async function getUserSettings(userId) {
+  const response = await fetch('/api/user/settings');
+  if (!response.ok) throw new Error('Failed to fetch settings');
+  return response.json();
+}
+
+export async function updateUserSettings(userId, settings) {
+  const response = await fetch('/api/user/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings)
+  });
+  if (!response.ok) throw new Error('Failed to update settings');
+  return response.json();
+}
+
+export async function callGeminiText(prompt) {
+  const response = await fetch('/api/gemini/text', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt })
+  });
+  const data = await response.json();
+  return data.text;
+}
+
+export async function analyzeImageWithGemini(base64Data, mimeType) {
+  const response = await fetch('/api/gemini/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ base64Data, mimeType })
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
