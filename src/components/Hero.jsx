@@ -68,12 +68,12 @@ const HeroSection = React.forwardRef(
         {...props}
       >
         {/* Left Side: Content */}
-        <div className="flex w-full flex-col justify-between p-8 md:w-1/2 md:p-12 lg:w-3/5 lg:p-16 z-10">
+        <div className="grow flex w-full flex-col justify-between p-8 md:w-1/2 md:p-12 lg:w-3/5 lg:p-16 z-10">
             {/* Top Section: Logo & Main Content */}
             
             <motion.header className="mb-12" variants={itemVariants}>
                 {logo && (
-                    <div className="flex items-center">
+                    <div className="flex items-center justify-center md:justify-start">
                         <img src={logo.url} alt={logo.alt} className="mr-3 h-8" />
                         <div>
                             {logo.text && <p className="text-lg font-bold text-slate-900">{logo.text}</p>}
@@ -83,7 +83,7 @@ const HeroSection = React.forwardRef(
                 )}
             </motion.header>
 
-            <motion.main variants={containerVariants} className="flex-1 flex flex-col justify-center">
+            <motion.main variants={containerVariants} className="flex-1 flex flex-col justify-center items-center text-center md:items-start md:text-left">
                     <motion.h1 className="text-4xl font-bold leading-tight text-slate-900 md:text-5xl" variants={itemVariants}>
                         {title}
                     </motion.h1>
@@ -105,19 +105,19 @@ const HeroSection = React.forwardRef(
             <motion.footer className="mt-12 w-full" variants={itemVariants}>
                 <div className="grid grid-cols-1 gap-6 text-xs text-slate-400 sm:grid-cols-3">
                     {contactInfo.website && (
-                        <div className="flex items-center">
+                        <div className="flex items-center justify-center md:justify-start">
                             <InfoIcon type="website" />
                             <span>{contactInfo.website}</span>
                         </div>
                     )}
                     {contactInfo.phone && (
-                        <div className="flex items-center">
+                        <div className="flex items-center justify-center md:justify-start">
                             <InfoIcon type="phone" />
                             <span>{contactInfo.phone}</span>
                         </div>
                     )}
                     {contactInfo.address && (
-                        <div className="flex items-center">
+                        <div className="flex items-center justify-center md:justify-start">
                             <InfoIcon type="address" />
                             <span>{contactInfo.address}</span>
                         </div>
@@ -128,7 +128,7 @@ const HeroSection = React.forwardRef(
 
         {/* Right Side: Image with Clip Path Animation */}
         <motion.div 
-          className="w-full min-h-[300px] bg-cover bg-center md:w-1/2 md:min-h-full lg:w-2/5 absolute right-0 top-0 bottom-0 md:relative"
+          className="hidden md:block w-full min-h-[300px] bg-cover bg-center md:w-1/2 md:min-h-full lg:w-2/5 absolute right-0 top-0 bottom-0 md:relative"
           style={{ 
             backgroundImage: `url(${backgroundImage})`,
           }}
