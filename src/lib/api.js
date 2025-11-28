@@ -68,3 +68,25 @@ export async function analyzeImageWithGemini(base64Data, mimeType) {
   if (data.error) throw new Error(data.error);
   return data;
 }
+
+export async function getDailyStats(date) {
+  const response = await fetch(`/api/daily-stats?date=${date}`);
+  if (!response.ok) throw new Error('Failed to fetch daily stats');
+  return response.json();
+}
+
+export async function getWeightHistory() {
+  const response = await fetch(`/api/daily-stats?range=month`);
+  if (!response.ok) throw new Error('Failed to fetch weight history');
+  return response.json();
+}
+
+export async function updateDailyStats(data) {
+  const response = await fetch('/api/daily-stats', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!response.ok) throw new Error('Failed to update daily stats');
+  return response.json();
+}

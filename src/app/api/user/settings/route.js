@@ -36,7 +36,10 @@ export async function POST(request) {
     .from('user_settings')
     .upsert({ 
       user_id: user.id, 
-      daily_goal: body.dailyGoal 
+      daily_goal: body.dailyGoal,
+      protein_goal: body.proteinGoal,
+      carbs_goal: body.carbsGoal,
+      fats_goal: body.fatsGoal
     })
     .select()
     .single();

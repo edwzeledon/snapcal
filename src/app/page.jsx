@@ -9,7 +9,7 @@ import Dashboard from '@/components/Dashboard';
 import AddFood from '@/components/AddFood';
 import HistoryView from '@/components/HistoryView';
 import EditFoodModal from '@/components/EditFoodModal';
-import LandingPage from '@/components/LandingPage';
+import LandingPage from '@/components/landing-page/LandingPage';
 
 const NavButton = ({ active, onClick, icon: Icon, label }) => (
   <button 
@@ -29,6 +29,7 @@ export default function App() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dailyGoal, setDailyGoal] = useState(2000);
+  const [macroGoals, setMacroGoals] = useState({ protein: 150, carbs: 200, fats: 65 });
   const [editingLog, setEditingLog] = useState(null);
 
   // --- Auth & Data Fetching ---
@@ -55,8 +56,13 @@ export default function App() {
         getUserSettings(user.id)
       ]);
       setLogs(fetchedLogs);
-      if (settings?.daily_goal) {
-        setDailyGoal(settings.daily_goal);
+      if (settings) {
+        if (settings.daily_goal) setDailyGoal(settings.daily_goal);
+        setMacroGoals({
+          protein: settings.protein_goal || Math.round((settings.daily_goal * 0.3) / 4),
+          carbs: settings.carbs_goal || Math.round((settings.daily_goal * 0.4) / 4),
+          fats: settings.fats_goal || Math.round((settings.daily_goal * 0.3) / 9)
+        });
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -71,11 +77,26 @@ export default function App() {
     }
   }, [user]);
 
-  const handleUpdateGoal = async (newGoal) => {
+  const handleUpdateGoal = async (updates) => {
     if (!user) return;
-    setDailyGoal(parseInt(newGoal));
+    
+    // Update local state
+    if (updates.dailyGoal) setDailyGoal(updates.dailyGoal);
+    if (updates.proteinGoal || updates.carbsGoal || updates.fatsGoal) {
+      setMacroGoals(prev => ({
+        protein: updates.proteinGoal || prev.protein,
+        carbs: updates.carbsGoal || prev.carbs,
+        fats: updates.fatsGoal || prev.fats
+      }));
+    }
+
     try {
-      await updateUserSettings(user.id, { dailyGoal: parseInt(newGoal) });
+      await updateUserSettings(user.id, { 
+        dailyGoal: updates.dailyGoal || dailyGoal,
+        proteinGoal: updates.proteinGoal || macroGoals.protein,
+        carbsGoal: updates.carbsGoal || macroGoals.carbs,
+        fatsGoal: updates.fatsGoal || macroGoals.fats
+      });
     } catch (e) {
       console.error("Error saving goal", e);
     }
@@ -98,12 +119,10 @@ export default function App() {
 
   // --- Derived State ---
   const today = new Date();
-  today.setHours(0,0,0,0);
 
   const todaysLogs = logs.filter(log => {
     const logDate = new Date(log.date);
-    logDate.setHours(0,0,0,0);
-    return logDate.getTime() === today.getTime();
+    return logDate.toDateString() === today.toDateString();
   });
 
   const caloriesToday = todaysLogs.reduce((acc, log) => acc + (parseInt(log.calories) || 0), 0);
@@ -115,12 +134,10 @@ export default function App() {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      d.setHours(0,0,0,0);
       
       const dayLogs = logs.filter(log => {
         const logDate = new Date(log.date);
-        logDate.setHours(0,0,0,0);
-        return logDate.getTime() === d.getTime();
+        return logDate.toDateString() === d.toDateString();
       });
       
       const total = dayLogs.reduce((acc, log) => acc + (parseInt(log.calories) || 0), 0);
@@ -128,13 +145,14 @@ export default function App() {
         dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
         date: d,
         calories: total,
-        height: Math.min(100, (total / dailyGoal) * 100)
+        height: (total / dailyGoal) * 100
       });
     }
     return days;
   }, [logs, dailyGoal]);
 
   // --- Render ---
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
@@ -181,7 +199,8 @@ export default function App() {
             {activeTab === 'home' && (
               <Dashboard 
                 caloriesToday={caloriesToday} 
-                dailyGoal={dailyGoal} 
+                dailyGoal={dailyGoal}
+                macroGoals={macroGoals}
                 percentComplete={percentComplete}
                 weeklyData={weeklyData}
                 todaysLogs={todaysLogs}
@@ -189,6 +208,8 @@ export default function App() {
                 onLogDeleted={fetchData}
                 onUpdateGoal={handleUpdateGoal}
                 onEditLog={setEditingLog}
+                onLogAdded={fetchData}
+                onAddMeal={() => setActiveTab('add')}
               />
             )}
             {activeTab === 'add' && (

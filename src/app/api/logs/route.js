@@ -43,6 +43,8 @@ export async function POST(request) {
         carbs: body.carbs || 0,
         fats: body.fats || 0,
         method: body.method,
+        meal_type: body.mealType || 'snack',
+        image_url: body.imageUrl || null,
         date: new Date().toISOString()
       }
     ])

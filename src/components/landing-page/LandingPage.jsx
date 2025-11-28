@@ -3,8 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { HeroSection } from '@/components/Hero';
-import Pricing from '@/components/Pricing';
+import { HeroSection } from './Hero';
+import Pricing from './Pricing';
 import { Utensils } from 'lucide-react';
 
 export default function LandingPage() {

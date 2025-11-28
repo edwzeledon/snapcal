@@ -1,35 +1,95 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Flame, Sparkles, TrendingUp, Brain, Trash2, Loader2, X, Edit2, Check, Beef, Wheat, Droplet } from 'lucide-react';
-import { callGeminiText, deleteLog } from '@/lib/api';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, Brain, Loader2, X } from 'lucide-react';
+import { callGeminiText, deleteLog, getDailyStats, updateDailyStats, addLog, getWeightHistory } from '@/lib/api';
+import DailyProgress from './dashboard/DailyProgress';
+import WeeklyTrend from './dashboard/WeeklyTrend';
+import WeightTrend from './dashboard/WeightTrend';
+import HydrationTracker from './dashboard/HydrationTracker';
+import MacroDistribution from './dashboard/MacroDistribution';
+import MealFeed from './dashboard/MealFeed';
+import QuickAdd from './dashboard/QuickAdd';
 
-const MacroCard = ({ icon: Icon, label, value, color, bgColor }) => (
-  <div className={`flex-1 ${bgColor} p-3 rounded-2xl flex flex-col items-center justify-center gap-1 min-w-[100px]`}>
-    <div className={`p-1.5 bg-white rounded-lg ${color}`}>
-      <Icon className="w-4 h-4" />
-    </div>
-    <span className={`text-sm font-bold ${color}`}>{value}g</span>
-    <span className="text-[10px] uppercase font-semibold text-slate-400">{label}</span>
-  </div>
-);
-
-export default function Dashboard({ caloriesToday, dailyGoal, percentComplete, weeklyData, todaysLogs, user, onLogDeleted, onUpdateGoal, onEditLog }) {
+export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percentComplete, weeklyData, todaysLogs, user, onLogDeleted, onUpdateGoal, onEditLog, onLogAdded, onAddMeal }) {
   const remaining = dailyGoal - caloriesToday;
   const [aiModal, setAiModal] = useState({ open: false, type: '', content: '', loading: false });
-  const [editGoal, setEditGoal] = useState(false);
-  const [tempGoal, setTempGoal] = useState(dailyGoal.toString());
+  
+  // New State for Daily Stats
+  const [dailyStats, setDailyStats] = useState({ water_intake: 0, weight: null });
+  const [weightHistory, setWeightHistory] = useState([]); 
 
-  // Calculate Macros
-  const macros = todaysLogs.reduce((acc, log) => ({
-    protein: acc.protein + (parseInt(log.protein) || 0),
-    carbs: acc.carbs + (parseInt(log.carbs) || 0),
-    fats: acc.fats + (parseInt(log.fats) || 0)
-  }), { protein: 0, carbs: 0, fats: 0 });
+  // Fetch Daily Stats on Load
+  useEffect(() => {
+    if (user) {
+      loadDailyStats();
+    }
+  }, [user]);
 
-  const handleSaveGoal = () => {
-    onUpdateGoal(tempGoal);
-    setEditGoal(false);
+  const loadDailyStats = async () => {
+    try {
+      const dateStr = new Date().toISOString().split('T')[0];
+      const [stats, history] = await Promise.all([
+        getDailyStats(dateStr),
+        getWeightHistory()
+      ]);
+
+      if (stats) {
+        setDailyStats({
+            water_intake: stats.water_intake || 0,
+            weight: stats.weight || null
+        });
+      }
+      if (history) {
+        setWeightHistory(history);
+      }
+    } catch (error) {
+      console.error("Error loading daily stats:", error);
+    }
+  };
+
+  const handleUpdateWater = async (newAmount) => {
+    if (!user) return;
+    // Ensure non-negative
+    const safeAmount = Math.max(0, newAmount);
+    setDailyStats(prev => ({ ...prev, water_intake: safeAmount }));
+    
+    try {
+      await updateDailyStats({ 
+        date: new Date().toISOString().split('T')[0], 
+        water_intake: safeAmount 
+      });
+    } catch (error) {
+      console.error("Error updating water:", error);
+      // Revert on error - we might need a better way to revert if we don't track previous state explicitly here, 
+      // but for now let's just re-fetch or keep it simple. 
+      // Ideally we'd use optimistic UI with rollback.
+      // For now, let's just log the error.
+    }
+  };
+
+  const handleUpdateWeight = async (newWeight) => {
+    if (!user) return;
+    setDailyStats(prev => ({ ...prev, weight: newWeight }));
+    
+    try {
+      await updateDailyStats({ 
+        date: new Date().toISOString().split('T')[0], 
+        weight: newWeight 
+      });
+    } catch (error) {
+      console.error("Error updating weight:", error);
+    }
+  };
+
+  const handleQuickAdd = async (logData) => {
+    if (!user) return;
+    try {
+        await addLog(user.id, logData);
+        if (onLogAdded) onLogAdded();
+    } catch (error) {
+        console.error("Error adding quick log:", error);
+    }
   };
 
   const handleDeleteLog = async (logId) => {
@@ -89,181 +149,71 @@ export default function Dashboard({ caloriesToday, dailyGoal, percentComplete, w
     }
   };
 
+  // Calculate Macros for Distribution Chart
+  const currentMacros = todaysLogs.reduce((acc, log) => ({
+    protein: acc.protein + (log.protein || 0),
+    carbs: acc.carbs + (log.carbs || 0),
+    fats: acc.fats + (log.fats || 0)
+  }), { protein: 0, carbs: 0, fats: 0 });
+
   return (
     <div className="p-6 md:p-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 md:pb-0">
       
-      {/* Daily Progress Card */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-10 -mt-10 blur-2xl opacity-50"></div>
-        
-        <div className="flex justify-between items-end relative z-10 mb-2">
-          <div>
-            <div className="text-slate-500 font-medium mb-1 flex items-center gap-2">
-              Calories Today
-              {editGoal ? (
-                <div className="flex items-center gap-1">
-                  <input 
-                    type="number" 
-                    value={tempGoal}
-                    onChange={e => setTempGoal(e.target.value)}
-                    className="w-20 px-2 py-0.5 rounded border border-indigo-200 text-lg font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    autoFocus
-                  />
-                  <button onClick={handleSaveGoal} className="bg-indigo-600 text-white p-1 rounded-md">
-                    <Check className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <button onClick={() => { setTempGoal(dailyGoal.toString()); setEditGoal(true); }} className="text-slate-300 hover:text-indigo-600 transition-colors">
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-              )}
+      {/* Row 1: Daily Progress & Quick Add/Hydration */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+            <DailyProgress 
+                caloriesToday={caloriesToday}
+                dailyGoal={dailyGoal}
+                macroGoals={macroGoals}
+                todaysLogs={todaysLogs}
+                onUpdateGoal={onUpdateGoal}
+                onSuggestMeal={handleSuggestMeal}
+                onAnalyzeDay={handleAnalyzeDay}
+            />
+        </div>
+        <div className="flex flex-col gap-6 h-full">
+            <QuickAdd onAddLog={handleQuickAdd} />
+            <div className="flex-1 min-h-0">
+                <HydrationTracker 
+                    waterIntake={dailyStats.water_intake} 
+                    onUpdateWater={handleUpdateWater} 
+                />
             </div>
-            <h2 className="text-4xl font-bold text-slate-800 tracking-tight">
-              {caloriesToday}
-              <span className="text-lg text-slate-400 font-normal ml-2">/ {dailyGoal}</span>
-            </h2>
-          </div>
-          <div className="text-right">
-             <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-bold">
-               <Flame className="w-3 h-3 fill-current" />
-               {remaining > 0 ? `${remaining} Left` : `${Math.abs(remaining)} Over`}
-             </div>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="relative h-4 bg-slate-100 rounded-full overflow-hidden mb-6">
-          <div 
-            className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ease-out ${
-              remaining < 0 ? 'bg-red-500' : 'bg-linear-to-r from-indigo-500 to-purple-500'
-            }`}
-            style={{ width: `${percentComplete}%` }}
-          />
-        </div>
-
-        {/* Macros Row */}
-        <div className="flex gap-3 relative z-10">
-          <MacroCard 
-            icon={Beef} 
-            label="Protein" 
-            value={macros.protein} 
-            color="text-blue-600" 
-            bgColor="bg-blue-50" 
-          />
-          <MacroCard 
-            icon={Wheat} 
-            label="Carbs" 
-            value={macros.carbs} 
-            color="text-amber-600" 
-            bgColor="bg-amber-50" 
-          />
-          <MacroCard 
-            icon={Droplet} 
-            label="Fats" 
-            value={macros.fats} 
-            color="text-rose-600" 
-            bgColor="bg-rose-50" 
-          />
-        </div>
-
-        {/* AI Suggestion Button */}
-        <div className="mt-6 pt-4 border-t border-slate-50 flex justify-center">
-          <button 
-            onClick={handleSuggestMeal}
-            className="flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors bg-indigo-50 px-4 py-2 rounded-xl hover:bg-indigo-100 active:scale-95 w-full justify-center"
-          >
-            <Sparkles className="w-4 h-4" />
-            {remaining > 0 ? "Chef's Suggestion" : "Diet Rescue"}
-          </button>
         </div>
       </div>
 
-      {/* Weekly Chart */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="font-bold text-slate-800 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-indigo-500" />
-            Weekly Trend
-          </h3>
+      {/* Row 2: Weekly Trend vs Macros */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 flex flex-col">
+            <WeeklyTrend weeklyData={weeklyData} />
         </div>
-        <div className="flex items-end justify-between h-32 gap-2">
-          {weeklyData.map((day, i) => (
-            <div key={i} className="flex flex-col items-center gap-2 flex-1 group">
-              <div className="w-full relative h-full flex items-end bg-slate-50 rounded-lg overflow-hidden">
-                <div 
-                  className={`w-full rounded-t-lg transition-all duration-700 ${
-                    day.height > 100 ? 'bg-red-400' : 'bg-indigo-400 group-hover:bg-indigo-500'
-                  }`}
-                  style={{ height: `${Math.max(day.height, 5)}%` }}
-                ></div>
-              </div>
-              <span className="text-xs font-medium text-slate-400">{day.dayName}</span>
-            </div>
-          ))}
+        <div className="h-full">
+            <MacroDistribution 
+                macros={currentMacros} 
+                goals={macroGoals} 
+            />
         </div>
       </div>
 
-      {/* Today's Log Brief */}
-      <div>
-        <div className="flex items-center justify-between mb-4 px-1">
-          <h3 className="font-bold text-slate-800">Today's Meals</h3>
-          {todaysLogs.length > 0 && (
-            <button 
-              onClick={handleAnalyzeDay}
-              className="text-xs font-medium bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-purple-200 transition-colors active:scale-95"
-            >
-              <Brain className="w-3 h-3" />
-              Analyze Day ✨
-            </button>
-          )}
+      {/* Row 3: Meal Feed vs Weight Trend */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+            <MealFeed 
+                logs={todaysLogs} 
+                onEditLog={onEditLog} 
+                onDeleteLog={handleDeleteLog}
+                onAnalyzeDay={handleAnalyzeDay}
+                onAddMeal={onAddMeal}
+            />
         </div>
-
-        {todaysLogs.length === 0 ? (
-          <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-slate-200">
-            <p className="text-slate-400 text-sm">No meals logged today yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {todaysLogs.map(log => (
-              <div key={log.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between group">
-                <div className="min-w-0">
-                  <p className="font-semibold text-slate-800 truncate">{log.food_item}</p>
-                  <p className="text-xs text-slate-400 flex flex-wrap gap-2">
-                    <span>{new Date(log.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                    {(log.protein || log.carbs || log.fats) && (
-                      <>
-                        <span className="text-slate-300 hidden sm:inline">•</span>
-                        <span className="text-slate-500 text-[10px] flex gap-1">
-                          {log.protein > 0 && <span className="text-blue-600 font-medium">P:{log.protein}</span>}
-                          {log.carbs > 0 && <span className="text-amber-600 font-medium">C:{log.carbs}</span>}
-                          {log.fats > 0 && <span className="text-rose-600 font-medium">F:{log.fats}</span>}
-                        </span>
-                      </>
-                    )}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="font-bold text-indigo-600 whitespace-nowrap">{log.calories} cal</span>
-                  
-                  <button 
-                    onClick={() => onEditLog(log)}
-                    className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-
-                  <button 
-                    onClick={() => handleDeleteLog(log.id)}
-                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div>
+            <WeightTrend 
+                currentWeight={dailyStats.weight} 
+                onUpdateWeight={handleUpdateWeight}
+                history={weightHistory}
+            />
+        </div>
       </div>
 
       {/* AI Modal */}
