@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { prompts } from '@/lib/prompts';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -35,7 +36,7 @@ export async function POST(request) {
   }
 
   try {
-    const { prompt, type } = await request.json();
+    const { type, todaysLogs, dailyGoal, caloriesToday, remaining } = await request.json();
 
     // Check Limits
     const today = new Date().toISOString().split('T')[0];
@@ -54,6 +55,18 @@ export async function POST(request) {
       if (stats && stats.suggestion_count >= 1) {
         return NextResponse.json({ error: 'Daily suggestion limit reached (1/1)' }, { status: 429 });
       }
+    }
+
+    // Build prompt on server side
+    let prompt = '';
+    if (type === 'suggestion') {
+      const history = todaysLogs?.map(l => `${l.food_item} (${l.calories} cal)`).join(', ') || 'nothing yet';
+      prompt = prompts.mealSuggestion({ history, dailyGoal, remaining });
+    } else if (type === 'overview') {
+      const history = todaysLogs?.map(l => `${l.food_item} (${l.calories} cal)`).join(', ') || 'nothing logged yet';
+      prompt = prompts.dailyOverview({ history, dailyGoal, caloriesToday });
+    } else {
+      return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
     }
 
     const response = await fetchWithBackoff(

@@ -101,7 +101,7 @@ export default function DailyProgress({ caloriesToday, dailyGoal, macroGoals, to
                 type="number" 
                 value={tempGoalValue}
                 onChange={e => setTempGoalValue(e.target.value)}
-                className="w-20 px-2 py-1 rounded border border-indigo-200 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-20 px-2 py-1 rounded border border-indigo-200 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 autoFocus
               />
               <button onClick={handleSaveGoal} className="bg-indigo-600 text-white p-1.5 rounded-lg hover:bg-indigo-700 transition-colors">

@@ -48,15 +48,15 @@ export async function updateUserSettings(userId, settings) {
   return response.json();
 }
 
-export async function callGeminiText(prompt, type = null) {
+export async function callGeminiText(data) {
   const response = await fetch('/api/gemini/text', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, type })
+    body: JSON.stringify(data)
   });
-  const data = await response.json();
-  if (data.error) throw new Error(data.error);
-  return data.text;
+  const result = await response.json();
+  if (result.error) throw new Error(result.error);
+  return result.text;
 }
 
 export async function analyzeImageWithGemini(base64Data, mimeType) {

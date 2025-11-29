@@ -88,23 +88,12 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
   const handleSuggestMeal = async () => {
     setAiModal({ open: true, type: 'suggestion', content: '', loading: true });
     try {
-      const history = todaysLogs.map(l => `${l.food_item} (${l.calories} cal)`).join(', ');
-      const prompt = `
-        I am a user tracking my calories. 
-        My daily goal is ${dailyGoal} calories. 
-        So far today I have eaten: ${history || 'nothing yet'}. 
-        I have ${remaining} calories remaining in my budget. 
-        
-        Please suggest ONE specific, tasty, and healthy meal or snack option that fits perfectly into my remaining calorie budget. 
-        Do not suggest something that exceeds the limit significantly.
-        If I have very few calories left (less than 100), suggest a tea or very light snack.
-        
-        Keep the response friendly and formatted like this:
-        "🍽️ [Meal Name] ([Approx Calories] cal)
-        
-        [Short appetizing description of why this is good for me right now]"
-      `;
-      const result = await callGeminiText(prompt, 'suggestion');
+      const result = await callGeminiText({
+        type: 'suggestion',
+        todaysLogs,
+        dailyGoal,
+        remaining
+      });
       setAiModal(prev => ({ ...prev, content: result, loading: false }));
       // Update local count after successful API call
       setDailyStats(prev => ({ ...prev, suggestion_count: (prev.suggestion_count || 0) + 1 }));
@@ -116,18 +105,12 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
   const handleAnalyzeDay = async () => {
     setAiModal({ open: true, type: 'analysis', content: '', loading: true });
     try {
-      const history = todaysLogs.map(l => `${l.food_item} (${l.calories} cal)`).join(', ');
-      const prompt = `
-        Act as a friendly, encouraging nutritionist coach.
-        Analyze my food log for today: ${history || 'nothing logged yet'}.
-        My goal is ${dailyGoal} calories and I have consumed ${caloriesToday}.
-        
-        Provide a 2-3 sentence summary. 
-        1. Give me positive reinforcement.
-        2. Give me one specific nutritional tip based on what I ate (e.g., "Great protein, but watch the sugar" or "Good job staying under, try to eat more fiber").
-        Use emojis. Be concise.
-      `;
-      const result = await callGeminiText(prompt, 'overview');
+      const result = await callGeminiText({
+        type: 'overview',
+        todaysLogs,
+        dailyGoal,
+        caloriesToday
+      });
       setAiModal(prev => ({ ...prev, content: result, loading: false }));
       // Update local count after successful API call
       setDailyStats(prev => ({ ...prev, overview_count: (prev.overview_count || 0) + 1 }));

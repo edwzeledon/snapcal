@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { prompts } from '@/lib/prompts';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -50,7 +51,7 @@ export async function POST(request) {
   try {
     const { base64Data, mimeType } = await request.json();
 
-    const prompt = `Identify the food in this image and provide a calorie estimate AND macronutrients (protein, carbs, fats in grams) for the serving size shown. Return ONLY raw JSON in this format: { "foodItem": "Food Name", "calories": number, "protein": number, "carbs": number, "fats": number }. If it's not food, return { "foodItem": "Unknown", "calories": 0, "protein": 0, "carbs": 0, "fats": 0 }. Do not include markdown formatting or backticks.`;
+    const prompt = prompts.imageAnalysis;
 
     const response = await fetchWithBackoff(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`,
