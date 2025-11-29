@@ -28,7 +28,7 @@ const InfoIcon = ({ type }) => {
 };
 
 const HeroSection = React.forwardRef(
-  ({ className, logo, slogan, title, subtitle, callToAction, backgroundImage, contactInfo, onCtaClick, ...props }, ref) => {
+  ({ className, logo, slogan, title, subtitle, callToAction, backgroundImage, contactInfo, onCtaClick, children, ...props }, ref) => {
     
     // Animation variants for the container to orchestrate children animations
     const containerVariants = {
@@ -68,10 +68,10 @@ const HeroSection = React.forwardRef(
         {...props}
       >
         {/* Left Side: Content */}
-        <div className="grow flex w-full flex-col justify-between p-8 md:w-1/2 md:p-12 lg:w-3/5 lg:p-16 z-10">
+        <div className="grow flex w-full flex-col justify-center p-8 md:w-1/2 md:p-12 lg:w-3/5 lg:p-16 z-10">
             {/* Top Section: Logo & Main Content */}
             
-            <motion.header className="mb-12" variants={itemVariants}>
+            <motion.header className="mb-8" variants={itemVariants}>
                 {logo && (
                     <div className="flex items-center justify-center md:justify-start">
                         <img src={logo.url} alt={logo.alt} className="mr-3 h-8" />
@@ -83,47 +83,70 @@ const HeroSection = React.forwardRef(
                 )}
             </motion.header>
 
-            <motion.main variants={containerVariants} className="flex-1 flex flex-col justify-center items-center text-center md:items-start md:text-left">
-                    <motion.h1 className="text-4xl font-bold leading-tight text-slate-900 md:text-5xl" variants={itemVariants}>
-                        {title}
-                    </motion.h1>
-                    <motion.div className="my-6 h-1 w-20 bg-indigo-600" variants={itemVariants}></motion.div>
-                    <motion.p className="mb-8 max-w-md text-base text-slate-500" variants={itemVariants}>
-                        {subtitle}
-                    </motion.p>
-                    <motion.button 
-                        onClick={onCtaClick}
-                        className="text-lg font-bold tracking-widest text-indigo-600 transition-colors hover:text-indigo-800 flex items-center gap-2" 
-                        variants={itemVariants}
+            <motion.main variants={containerVariants} className="flex-1 flex flex-col justify-center items-center text-center md:items-start md:text-left w-full max-w-lg mx-auto md:mx-0">
+                {children ? (
+                    <motion.div 
+                        key="auth-content"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                        className="w-full"
                     >
-                        {callToAction.text}
-                        <span aria-hidden="true">→</span>
-                    </motion.button>
-                </motion.main>
+                        {children}
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="hero-content"
+                        initial="hidden"
+                        animate="visible"
+                        variants={containerVariants}
+                        className="w-full"
+                    >
+                        <motion.h1 className="text-4xl font-bold leading-tight text-slate-900 md:text-5xl" variants={itemVariants}>
+                            {title}
+                        </motion.h1>
+                        <motion.div className="my-6 h-1 w-full md:w-20 bg-indigo-600" variants={itemVariants}></motion.div>
+                        <motion.p className="mb-8 max-w-md text-base text-slate-500 mx-auto md:mx-0" variants={itemVariants}>
+                            {subtitle}
+                        </motion.p>
+                        <motion.button 
+                            onClick={onCtaClick}
+                            className="text-lg font-bold tracking-widest text-indigo-600 transition-colors hover:text-indigo-800 inline-flex items-center gap-2" 
+                            variants={itemVariants}
+                        >
+                            {callToAction.text}
+                            <span aria-hidden="true">→</span>
+                        </motion.button>
+                    </motion.div>
+                )}
+            </motion.main>
 
             {/* Bottom Section: Footer Info */}
-            <motion.footer className="mt-12 w-full" variants={itemVariants}>
-                <div className="grid grid-cols-1 gap-6 text-xs text-slate-400 sm:grid-cols-3">
-                    {contactInfo.website && (
-                        <div className="flex items-center justify-center md:justify-start">
-                            <InfoIcon type="website" />
-                            <span>{contactInfo.website}</span>
-                        </div>
-                    )}
-                    {contactInfo.phone && (
-                        <div className="flex items-center justify-center md:justify-start">
-                            <InfoIcon type="phone" />
-                            <span>{contactInfo.phone}</span>
-                        </div>
-                    )}
-                    {contactInfo.address && (
-                        <div className="flex items-center justify-center md:justify-start">
-                            <InfoIcon type="address" />
-                            <span>{contactInfo.address}</span>
-                        </div>
-                    )}
-                </div>
-            </motion.footer>
+            {contactInfo && (
+                <motion.footer className="mt-12 w-full" variants={itemVariants}>
+                    <div className="grid grid-cols-1 gap-6 text-xs text-slate-400 sm:grid-cols-3">
+                        {contactInfo.website && (
+                            <div className="flex items-center justify-center md:justify-start">
+                                <InfoIcon type="website" />
+                                <span>{contactInfo.website}</span>
+                            </div>
+                        )}
+                        {contactInfo.phone && (
+                            <div className="flex items-center justify-center md:justify-start">
+                                <InfoIcon type="phone" />
+                                <span>{contactInfo.phone}</span>
+                            </div>
+                        )}
+                        {contactInfo.address && (
+                            <div className="flex items-center justify-center md:justify-start">
+                                <InfoIcon type="address" />
+                                <span>{contactInfo.address}</span>
+                            </div>
+                        )}
+                    </div>
+                </motion.footer>
+            )}
         </div>
 
         {/* Right Side: Image with Clip Path Animation */}

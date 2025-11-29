@@ -10,12 +10,13 @@ export default function QuickAdd({ onAddLog }) {
     if (!quickCalories) return;
 
     onAddLog({
-      food_item: quickName || 'Quick Add',
+      foodItem: quickName || 'Quick Add',
       calories: parseInt(quickCalories),
       protein: 0,
       carbs: 0,
       fats: 0,
-      meal_type: 'snack'
+      mealType: 'snack',
+      method: 'manual'
     });
 
     setQuickCalories('');

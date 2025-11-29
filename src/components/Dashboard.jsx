@@ -12,7 +12,7 @@ import QuickAdd from './dashboard/QuickAdd';
 
 export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percentComplete, weeklyData, todaysLogs, user, onLogDeleted, onUpdateGoal, onEditLog, onLogAdded, onAddMeal }) {
   const remaining = dailyGoal - caloriesToday;
-  const [aiModal, setAiModal] = useState({ open: false, type: '', content: '', loading: false });
+  const [aiModal, setAiModal] = useState({ open: false, type: '', step: 'confirm', content: '', loading: false });
   
   // New State for Daily Stats
   const [dailyStats, setDailyStats] = useState({ water_intake: 0, scan_count: 0, overview_count: 0, suggestion_count: 0 }); 
@@ -85,37 +85,57 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
     }
   };
 
-  const handleSuggestMeal = async () => {
-    setAiModal({ open: true, type: 'suggestion', content: '', loading: true });
-    try {
-      const result = await callGeminiText({
-        type: 'suggestion',
-        todaysLogs,
-        dailyGoal,
-        remaining
-      });
-      setAiModal(prev => ({ ...prev, content: result, loading: false }));
-      // Update local count after successful API call
-      setDailyStats(prev => ({ ...prev, suggestion_count: (prev.suggestion_count || 0) + 1 }));
-    } catch (error) {
-      setAiModal(prev => ({ ...prev, content: error.message || "Sorry, I couldn't cook up a suggestion right now.", loading: false }));
-    }
+  const handleSuggestMeal = () => {
+    setAiModal({
+      open: true,
+      type: 'suggestion',
+      step: 'confirm',
+      loading: false,
+      content: "Need a healthy meal idea? Chef Gemini will analyze your remaining calories and suggest the perfect meal to hit your goals.\n\n(Limit: 1 per day)"
+    });
   };
 
-  const handleAnalyzeDay = async () => {
-    setAiModal({ open: true, type: 'analysis', content: '', loading: true });
+  const handleAnalyzeDay = () => {
+    setAiModal({
+      open: true,
+      type: 'analysis',
+      step: 'confirm',
+      loading: false,
+      content: "Get a personalized summary of your nutrition today with actionable tips to improve.\n\n(Limit: 1 per day)"
+    });
+  };
+
+  const performAiAction = async () => {
+    setAiModal(prev => ({ ...prev, loading: true }));
+    
     try {
-      const result = await callGeminiText({
-        type: 'overview',
-        todaysLogs,
-        dailyGoal,
-        caloriesToday
-      });
-      setAiModal(prev => ({ ...prev, content: result, loading: false }));
-      // Update local count after successful API call
-      setDailyStats(prev => ({ ...prev, overview_count: (prev.overview_count || 0) + 1 }));
+      let result = '';
+      if (aiModal.type === 'suggestion') {
+        result = await callGeminiText({
+          type: 'suggestion',
+          todaysLogs,
+          dailyGoal,
+          remaining
+        });
+        setDailyStats(prev => ({ ...prev, suggestion_count: (prev.suggestion_count || 0) + 1 }));
+      } else {
+        result = await callGeminiText({
+          type: 'overview',
+          todaysLogs,
+          dailyGoal,
+          caloriesToday
+        });
+        setDailyStats(prev => ({ ...prev, overview_count: (prev.overview_count || 0) + 1 }));
+      }
+      
+      setAiModal(prev => ({ ...prev, content: result, loading: false, step: 'result' }));
     } catch (error) {
-      setAiModal(prev => ({ ...prev, content: error.message || "Sorry, I couldn't analyze your data right now.", loading: false }));
+      setAiModal(prev => ({ 
+        ...prev, 
+        content: error.message || "Sorry, something went wrong.", 
+        loading: false,
+        step: 'result' // Show error in result view
+      }));
     }
   };
 
@@ -205,7 +225,9 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
               </div>
               
               <h3 className="text-lg font-bold text-slate-800 mb-2">
-                {aiModal.loading ? 'Thinking...' : aiModal.type === 'suggestion' ? "Chef Gemini Suggests" : "Daily Insights"}
+                {aiModal.loading ? 'Thinking...' : 
+                 aiModal.step === 'confirm' ? (aiModal.type === 'suggestion' ? 'Chef Suggestion' : 'Daily Overview') :
+                 (aiModal.type === 'suggestion' ? "Chef Gemini Suggests" : "Daily Insights")}
               </h3>
               
               <div className="text-slate-600 text-sm leading-relaxed w-full">
@@ -216,19 +238,38 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
                     <div className="h-2 bg-slate-100 rounded w-5/6 mx-auto"></div>
                   </div>
                 ) : (
-                  <div className="whitespace-pre-line bg-slate-50 p-4 rounded-xl text-left border border-slate-100">
+                  <div className={`whitespace-pre-line ${aiModal.step === 'result' ? 'bg-slate-50 p-4 rounded-xl text-left border border-slate-100' : 'text-center px-2'}`}>
                     {aiModal.content}
                   </div>
                 )}
               </div>
 
               {!aiModal.loading && (
-                <button 
-                  onClick={() => setAiModal({ ...aiModal, open: false })}
-                  className="mt-6 w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 active:scale-95 transition-all"
-                >
-                  Got it
-                </button>
+                <div className="mt-6 w-full flex gap-3">
+                  {aiModal.step === 'confirm' ? (
+                    <>
+                      <button 
+                        onClick={() => setAiModal({ ...aiModal, open: false })}
+                        className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-medium hover:bg-slate-200 active:scale-95 transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={performAiAction}
+                        className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 active:scale-95 transition-all shadow-lg shadow-indigo-200"
+                      >
+                        Generate
+                      </button>
+                    </>
+                  ) : (
+                    <button 
+                      onClick={() => setAiModal({ ...aiModal, open: false })}
+                      className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 active:scale-95 transition-all"
+                    >
+                      Got it
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
