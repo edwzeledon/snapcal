@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Brain, Loader2, X } from 'lucide-react';
-import { callGeminiText, deleteLog, getDailyStats, updateDailyStats, addLog, getWeightHistory } from '@/lib/api';
+import { callGeminiText, deleteLog, getDailyStats, updateDailyStats, addLog } from '@/lib/api';
 import DailyProgress from './dashboard/DailyProgress';
 import WeeklyTrend from './dashboard/WeeklyTrend';
-import WeightTrend from './dashboard/WeightTrend';
 import HydrationTracker from './dashboard/HydrationTracker';
 import MacroDistribution from './dashboard/MacroDistribution';
 import MealFeed from './dashboard/MealFeed';
@@ -16,8 +15,7 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
   const [aiModal, setAiModal] = useState({ open: false, type: '', content: '', loading: false });
   
   // New State for Daily Stats
-  const [dailyStats, setDailyStats] = useState({ water_intake: 0, weight: null });
-  const [weightHistory, setWeightHistory] = useState([]); 
+  const [dailyStats, setDailyStats] = useState({ water_intake: 0, scan_count: 0, overview_count: 0, suggestion_count: 0 }); 
 
   // Fetch Daily Stats on Load
   useEffect(() => {
@@ -29,19 +27,15 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
   const loadDailyStats = async () => {
     try {
       const dateStr = new Date().toISOString().split('T')[0];
-      const [stats, history] = await Promise.all([
-        getDailyStats(dateStr),
-        getWeightHistory()
-      ]);
+      const stats = await getDailyStats(dateStr);
 
       if (stats) {
         setDailyStats({
             water_intake: stats.water_intake || 0,
-            weight: stats.weight || null
+            scan_count: stats.scan_count || 0,
+            overview_count: stats.overview_count || 0,
+            suggestion_count: stats.suggestion_count || 0
         });
-      }
-      if (history) {
-        setWeightHistory(history);
       }
     } catch (error) {
       console.error("Error loading daily stats:", error);
@@ -68,24 +62,13 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
     }
   };
 
-  const handleUpdateWeight = async (newWeight) => {
-    if (!user) return;
-    setDailyStats(prev => ({ ...prev, weight: newWeight }));
-    
-    try {
-      await updateDailyStats({ 
-        date: new Date().toISOString().split('T')[0], 
-        weight: newWeight 
-      });
-    } catch (error) {
-      console.error("Error updating weight:", error);
-    }
-  };
+
 
   const handleQuickAdd = async (logData) => {
     if (!user) return;
     try {
         await addLog(user.id, logData);
+        // Only refetch if actually needed
         if (onLogAdded) onLogAdded();
     } catch (error) {
         console.error("Error adding quick log:", error);
@@ -121,10 +104,12 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
         
         [Short appetizing description of why this is good for me right now]"
       `;
-      const result = await callGeminiText(prompt);
+      const result = await callGeminiText(prompt, 'suggestion');
       setAiModal(prev => ({ ...prev, content: result, loading: false }));
+      // Update local count after successful API call
+      setDailyStats(prev => ({ ...prev, suggestion_count: (prev.suggestion_count || 0) + 1 }));
     } catch (error) {
-      setAiModal(prev => ({ ...prev, content: "Sorry, I couldn't cook up a suggestion right now.", loading: false }));
+      setAiModal(prev => ({ ...prev, content: error.message || "Sorry, I couldn't cook up a suggestion right now.", loading: false }));
     }
   };
 
@@ -142,10 +127,12 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
         2. Give me one specific nutritional tip based on what I ate (e.g., "Great protein, but watch the sugar" or "Good job staying under, try to eat more fiber").
         Use emojis. Be concise.
       `;
-      const result = await callGeminiText(prompt);
+      const result = await callGeminiText(prompt, 'overview');
       setAiModal(prev => ({ ...prev, content: result, loading: false }));
+      // Update local count after successful API call
+      setDailyStats(prev => ({ ...prev, overview_count: (prev.overview_count || 0) + 1 }));
     } catch (error) {
-      setAiModal(prev => ({ ...prev, content: "Sorry, I couldn't analyze your data right now.", loading: false }));
+      setAiModal(prev => ({ ...prev, content: error.message || "Sorry, I couldn't analyze your data right now.", loading: false }));
     }
   };
 
@@ -170,6 +157,8 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
                 onUpdateGoal={onUpdateGoal}
                 onSuggestMeal={handleSuggestMeal}
                 onAnalyzeDay={handleAnalyzeDay}
+                suggestionCount={dailyStats.suggestion_count || 0}
+                overviewCount={dailyStats.overview_count || 0}
             />
         </div>
         <div className="flex flex-col gap-6 h-full">
@@ -196,24 +185,15 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
         </div>
       </div>
 
-      {/* Row 3: Meal Feed vs Weight Trend */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-            <MealFeed 
-                logs={todaysLogs} 
-                onEditLog={onEditLog} 
-                onDeleteLog={handleDeleteLog}
-                onAnalyzeDay={handleAnalyzeDay}
-                onAddMeal={onAddMeal}
-            />
-        </div>
-        <div>
-            <WeightTrend 
-                currentWeight={dailyStats.weight} 
-                onUpdateWeight={handleUpdateWeight}
-                history={weightHistory}
-            />
-        </div>
+      {/* Row 3: Meal Feed */}
+      <div className="w-full">
+        <MealFeed 
+            logs={todaysLogs} 
+            onEditLog={onEditLog} 
+            onDeleteLog={handleDeleteLog}
+            onAnalyzeDay={handleAnalyzeDay}
+            onAddMeal={onAddMeal}
+        />
       </div>
 
       {/* AI Modal */}

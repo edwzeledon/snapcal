@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Utensils, LogOut, Home, Plus, Calendar } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
-import { getLogs, getUserSettings, updateUserSettings, updateLog } from '@/lib/api';
+import { getLogs, getUserSettings, updateUserSettings, updateLog, getDailyStats } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
 import Dashboard from '@/components/Dashboard';
 import AddFood from '@/components/AddFood';
@@ -31,6 +31,7 @@ export default function App() {
   const [dailyGoal, setDailyGoal] = useState(2000);
   const [macroGoals, setMacroGoals] = useState({ protein: 150, carbs: 200, fats: 65 });
   const [editingLog, setEditingLog] = useState(null);
+  const [scanCount, setScanCount] = useState(0);
 
   // --- Auth & Data Fetching ---
   useEffect(() => {
@@ -51,9 +52,10 @@ export default function App() {
   const fetchData = async () => {
     if (!user) return;
     try {
-      const [fetchedLogs, settings] = await Promise.all([
+      const [fetchedLogs, settings, dailyStats] = await Promise.all([
         getLogs(user.id),
-        getUserSettings(user.id)
+        getUserSettings(user.id),
+        getDailyStats(new Date().toISOString().split('T')[0])
       ]);
       setLogs(fetchedLogs);
       if (settings) {
@@ -63,6 +65,9 @@ export default function App() {
           carbs: settings.carbs_goal || Math.round((settings.daily_goal * 0.4) / 4),
           fats: settings.fats_goal || Math.round((settings.daily_goal * 0.3) / 9)
         });
+      }
+      if (dailyStats) {
+        setScanCount(dailyStats.scan_count || 0);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -74,6 +79,7 @@ export default function App() {
       fetchData();
     } else {
       setLogs([]);
+      setScanCount(0);
     }
   }, [user]);
 
@@ -215,6 +221,7 @@ export default function App() {
             {activeTab === 'add' && (
               <AddFood 
                 user={user} 
+                initialScanCount={scanCount}
                 onSuccess={() => {
                   fetchData();
                   setActiveTab('home');

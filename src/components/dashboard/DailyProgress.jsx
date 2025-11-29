@@ -47,10 +47,13 @@ const CircleChart = ({ value, max, color, label, icon: Icon, onClick }) => {
   );
 };
 
-export default function DailyProgress({ caloriesToday, dailyGoal, macroGoals, todaysLogs, onUpdateGoal, onSuggestMeal, onAnalyzeDay }) {
+export default function DailyProgress({ caloriesToday, dailyGoal, macroGoals, todaysLogs, onUpdateGoal, onSuggestMeal, onAnalyzeDay, suggestionCount = 0, overviewCount = 0 }) {
   const remaining = dailyGoal - caloriesToday;
   const [editingGoal, setEditingGoal] = useState(null);
   const [tempGoalValue, setTempGoalValue] = useState('');
+
+  const suggestionDisabled = suggestionCount >= 1;
+  const overviewDisabled = overviewCount >= 1;
 
   // Calculate Macros
   const macros = todaysLogs.reduce((acc, log) => ({
@@ -151,17 +154,27 @@ export default function DailyProgress({ caloriesToday, dailyGoal, macroGoals, to
       <div className="mt-2 pt-4 border-t border-slate-50 flex gap-3">
         <button 
           onClick={onSuggestMeal}
-          className="flex-1 flex items-center justify-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors bg-indigo-50 px-4 py-2 rounded-xl hover:bg-indigo-100 active:scale-95"
+          disabled={suggestionDisabled}
+          className={`flex-1 flex items-center justify-center gap-2 text-sm font-semibold transition-colors px-4 py-2 rounded-xl active:scale-95 ${
+            suggestionDisabled 
+              ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+              : 'text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100'
+          }`}
         >
           <Sparkles className="w-4 h-4" />
-          {remaining > 0 ? "Chef's Suggestion" : "Diet Rescue"}
+          {remaining > 0 ? "Chef's Suggestion" : "Diet Rescue"} {suggestionDisabled ? "(0/1)" : "(1/1)"}
         </button>
         <button 
           onClick={onAnalyzeDay}
-          className="flex-1 flex items-center justify-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-800 transition-colors bg-purple-50 px-4 py-2 rounded-xl hover:bg-purple-100 active:scale-95"
+          disabled={overviewDisabled}
+          className={`flex-1 flex items-center justify-center gap-2 text-sm font-semibold transition-colors px-4 py-2 rounded-xl active:scale-95 ${
+            overviewDisabled 
+              ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+              : 'text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100'
+          }`}
         >
           <Brain className="w-4 h-4" />
-          Daily Overview
+          Daily Overview {overviewDisabled ? "(0/1)" : "(1/1)"}
         </button>
       </div>
     </div>

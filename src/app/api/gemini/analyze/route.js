@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -24,6 +25,26 @@ async function fetchWithBackoff(url, options, retries = 3, backoff = 1000) {
 export async function POST(request) {
   if (!GEMINI_API_KEY) {
     return NextResponse.json({ error: "Gemini API Key not configured" }, { status: 500 });
+  }
+
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Check Daily Limit
+  const today = new Date().toISOString().split('T')[0];
+  const { data: stats } = await supabase
+    .from('daily_stats')
+    .select('scan_count')
+    .eq('user_id', user.id)
+    .eq('date', today)
+    .single();
+
+  if (stats && stats.scan_count >= 3) {
+    return NextResponse.json({ error: 'Daily scan limit reached (3/3)' }, { status: 429 });
   }
 
   try {
@@ -53,12 +74,20 @@ export async function POST(request) {
     if (text) {
       const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
       const json = JSON.parse(cleanText);
+
+      // Increment Usage
+      if (stats) {
+        await supabase.from('daily_stats').update({ scan_count: (stats.scan_count || 0) + 1 }).eq('user_id', user.id).eq('date', today);
+      } else {
+        await supabase.from('daily_stats').insert({ user_id: user.id, date: today, scan_count: 1 });
+      }
+
       return NextResponse.json(json);
     }
     
     return NextResponse.json({ error: "Could not analyze image" }, { status: 400 });
   } catch (error) {
     console.error("Gemini Vision Error:", error);
-    return NextResponse.json({ error: "Failed to analyze image" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to analyze image" }, { status: 500 });
   }
 }

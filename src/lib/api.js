@@ -48,13 +48,14 @@ export async function updateUserSettings(userId, settings) {
   return response.json();
 }
 
-export async function callGeminiText(prompt) {
+export async function callGeminiText(prompt, type = null) {
   const response = await fetch('/api/gemini/text', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt })
+    body: JSON.stringify({ prompt, type })
   });
   const data = await response.json();
+  if (data.error) throw new Error(data.error);
   return data.text;
 }
 
@@ -72,12 +73,6 @@ export async function analyzeImageWithGemini(base64Data, mimeType) {
 export async function getDailyStats(date) {
   const response = await fetch(`/api/daily-stats?date=${date}`);
   if (!response.ok) throw new Error('Failed to fetch daily stats');
-  return response.json();
-}
-
-export async function getWeightHistory() {
-  const response = await fetch(`/api/daily-stats?range=month`);
-  if (!response.ok) throw new Error('Failed to fetch weight history');
   return response.json();
 }
 
