@@ -240,7 +240,7 @@ export default function AddFood({ user, onSuccess, onCancel, initialScanCount = 
 
       <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white z-10">
         <h2 className="text-2xl font-bold text-slate-800">Add Meal</h2>
-        <button onClick={onCancel} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
+        <button onClick={() => { stopCamera(); onCancel(); }} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
           <X className="w-5 h-5 text-slate-600" />
         </button>
       </div>
