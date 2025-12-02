@@ -24,6 +24,7 @@ export default function AddFood({ user, onSuccess, onCancel, initialScanCount = 
   const [mode, setMode] = useState('scan'); // 'scan' or 'manual'
   const [analyzing, setAnalyzing] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [capturedImage, setCapturedImage] = useState(null); // Holds image before confirmation
   const [form, setForm] = useState({ foodItem: '', calories: '', protein: '', carbs: '', fats: '', mealType: 'snack' });
   const [error, setError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -106,12 +107,26 @@ export default function AddFood({ user, onSuccess, onCancel, initialScanCount = 
       
       const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
       stopCamera();
-      setPreview(dataUrl);
       
-      // Extract base64 and analyze
-      const base64 = dataUrl.split(',')[1];
-      performAnalysis(base64, 'image/jpeg');
+      // Store for confirmation instead of analyzing immediately
+      setCapturedImage({ dataUrl, base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
     }
+  };
+
+  const confirmImage = () => {
+    if (capturedImage) {
+      setPreview(capturedImage.dataUrl);
+      performAnalysis(capturedImage.base64, capturedImage.mimeType);
+      setCapturedImage(null);
+    }
+  };
+
+  const retakeImage = async () => {
+    setError('');
+    // Start camera first while still showing the image
+    await startCamera();
+    // Then clear the captured image to reveal the camera feed
+    setCapturedImage(null);
   };
 
   const performAnalysis = async (base64, mimeType) => {
@@ -145,17 +160,14 @@ export default function AddFood({ user, onSuccess, onCancel, initialScanCount = 
   const processFile = async (file) => {
     if (!file) return;
     setError('');
-    setAnalyzing(true);
-    setForm(prev => ({ ...prev, foodItem: '', calories: '', protein: '', carbs: '', fats: '' }));
     
     try {
       const { base64, mimeType, fullData } = await formatBase64(file);
-      setPreview(fullData);
-      performAnalysis(base64, mimeType);
+      // Store for confirmation instead of analyzing immediately
+      setCapturedImage({ dataUrl: fullData, base64, mimeType });
     } catch (err) {
       console.error(err);
       setError("Failed to process image.");
-      setAnalyzing(false);
     }
   };
 
@@ -292,11 +304,12 @@ export default function AddFood({ user, onSuccess, onCancel, initialScanCount = 
                   ref={videoRef} 
                   autoPlay 
                   playsInline 
-                  className={`absolute inset-0 w-full h-full object-cover ${isCameraActive && !preview ? 'block' : 'hidden'}`}
+                  className={`absolute inset-0 w-full h-full object-cover ${isCameraActive && !preview && !capturedImage ? 'block' : 'hidden'}`}
                 />
                 
                 {/* 2. Captured/Uploaded Preview */}
                 {preview && <img src={preview} alt="Preview" className="absolute inset-0 w-full h-full object-cover z-10" />}
+                {capturedImage && <img src={capturedImage.dataUrl} alt="Captured" className="absolute inset-0 w-full h-full object-cover z-10 transition-opacity duration-300" />}
                 
                 {/* 3. Loading Overlay */}
                 {analyzing && (
@@ -306,8 +319,8 @@ export default function AddFood({ user, onSuccess, onCancel, initialScanCount = 
                   </div>
                 )}
 
-                {/* 4. Initial Buttons (Visible if no camera active & no preview) */}
-                {!isCameraActive && !preview && !analyzing && (
+                {/* 4. Initial Buttons (Visible if no camera active & no preview & no captured image) */}
+                {!isCameraActive && !preview && !capturedImage && !analyzing && (
                   <div className="flex flex-col gap-4 w-full px-8 text-center">
                     <button 
                       onClick={startCamera}
@@ -362,7 +375,27 @@ export default function AddFood({ user, onSuccess, onCancel, initialScanCount = 
                   </div>
                 )}
 
-                {/* 6. Close Preview Button */}
+                {/* 6. Confirmation Buttons */}
+                {capturedImage && !analyzing && (
+                  <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4 z-20 px-6">
+                    <button 
+                      onClick={retakeImage}
+                      className="flex-1 max-w-xs py-3 bg-white/90 backdrop-blur-md text-slate-700 font-bold rounded-xl hover:bg-white transition-all shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <X className="w-5 h-5" />
+                      Retake
+                    </button>
+                    <button 
+                      onClick={confirmImage}
+                      className="flex-1 max-w-xs py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <Check className="w-5 h-5" />
+                      Analyze
+                    </button>
+                  </div>
+                )}
+
+                {/* 7. Close Preview Button */}
                 {preview && !analyzing && (
                   <button 
                     onClick={() => { setPreview(null); setForm({foodItem: '', calories: '', protein: '', carbs: '', fats: '', mealType: 'snack'}); }} 
