@@ -20,10 +20,11 @@ export async function GET(request) {
 
   if (date) {
     query = query.eq('date', date).single();
-  } else if (range === 'month') {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    query = query.gte('date', thirtyDaysAgo.toISOString().split('T')[0]).order('date', { ascending: true });
+  } else if (range) {
+    const days = range === 'week' ? 7 : range === 'month' ? 30 : range === '90days' ? 90 : 30;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    query = query.gte('date', startDate.toISOString().split('T')[0]).order('date', { ascending: true });
   } else {
     // Default to today if no params, or handle as needed
     const today = new Date().toISOString().split('T')[0];

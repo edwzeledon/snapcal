@@ -9,6 +9,7 @@ import HydrationTracker from './dashboard/HydrationTracker';
 import MacroDistribution from './dashboard/MacroDistribution';
 import MealFeed from './dashboard/MealFeed';
 import QuickAdd from './dashboard/QuickAdd';
+import WeightTrend from './dashboard/WeightTrend';
 
 export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percentComplete, weeklyData, todaysLogs, user, onLogDeleted, onUpdateGoal, onEditLog, onLogAdded, onAddMeal }) {
   const remaining = dailyGoal - caloriesToday;
@@ -188,7 +189,12 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
         </div>
       </div>
 
-      {/* Row 3: Meal Feed */}
+      {/* Row 3: Weight Trend */}
+      <div className="w-full">
+        <WeightTrend user={user} />
+      </div>
+
+      {/* Row 4: Meal Feed */}
       <div className="w-full">
         <MealFeed 
             logs={todaysLogs} 

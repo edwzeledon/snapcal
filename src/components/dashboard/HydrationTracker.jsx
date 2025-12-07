@@ -46,7 +46,7 @@ export default function HydrationTracker({ waterIntake = 0, onUpdateWater }) {
         ))}
       </div>
       <p className="text-center text-sm text-slate-400 mt-4 font-medium shrink-0">
-        {waterIntake} / 8 glasses
+        {waterIntake} / 8 Bottles
       </p>
     </div>
   );

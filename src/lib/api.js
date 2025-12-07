@@ -76,6 +76,14 @@ export async function getDailyStats(date) {
   return response.json();
 }
 
+export async function getWeightHistory(range) {
+  const response = await fetch(`/api/daily-stats?range=${range}`, {
+    headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+  });
+  if (!response.ok) throw new Error('Failed to fetch weight history');
+  return response.json();
+}
+
 export async function updateDailyStats(data) {
   const response = await fetch('/api/daily-stats', {
     method: 'POST',
