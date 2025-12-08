@@ -63,7 +63,32 @@ export async function POST(request) {
     }
 
     const tdee = bmr * (ACTIVITY_FACTORS[activity] || 1.2);
-    const targetCalories = Math.round(tdee + (GOAL_ADJUSTMENTS[goal] || 0));
+    let targetCalories = Math.round(tdee + (GOAL_ADJUSTMENTS[goal] || 0));
+
+    // Time-Based Calculation for Lose/Gain
+    if ((goal === 'lose' || goal === 'gain') && body.goalWeight && body.targetDate) {
+        const currentWeightKg = weight;
+        const goalWeightKg = body.goalWeight;
+        const weightDiffKg = currentWeightKg - goalWeightKg; // Positive if losing, Negative if gaining
+        
+        // 1 kg of fat approx 7700 calories
+        const totalCaloriesDiff = weightDiffKg * 7700;
+        
+        const today = new Date();
+        const target = new Date(body.targetDate);
+        const diffTime = Math.abs(target - today);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+        if (diffDays > 0) {
+            const dailyAdjustment = Math.round(totalCaloriesDiff / diffDays);
+            // Subtract adjustment from TDEE (if losing, diff is positive, so we subtract. If gaining, diff is negative, so we add)
+            targetCalories = Math.round(tdee - dailyAdjustment);
+            
+            // Safety Caps
+            if (targetCalories < 1200 && gender === 'female') targetCalories = 1200;
+            if (targetCalories < 1500 && gender === 'male') targetCalories = 1500;
+        }
+    }
 
     // Macro Split based on Goal
     let ratios = { p: 0.3, c: 0.35, f: 0.35 }; // Default (Maintain)

@@ -29,14 +29,50 @@ export default function OnboardingForm({ onComplete, onCancel, isEditing = false
         heightIn: '',
         activity: 'sedentary',
         goal: 'maintain',
+        goalWeight: '',
+        targetDate: '',
         customCalories: '',
         customProteinPercent: '',
         customCarbsPercent: '',
         customFatsPercent: ''
     });
 
-    const handleNext = () => setStep(prev => prev + 1);
+    const handleNext = () => {
+        if (step === 3 && formData.goal === 'maintain') {
+            handleSubmit();
+        } else {
+            setStep(prev => prev + 1);
+        }
+    };
     const handleBack = () => setStep(prev => prev - 1);
+
+    const getMinTargetDate = () => {
+        if (!formData.weight || !formData.goalWeight) return new Date().toISOString().split('T')[0];
+        
+        const current = parseFloat(formData.weight);
+        const target = parseFloat(formData.goalWeight);
+        
+        if (isNaN(current) || isNaN(target)) return new Date().toISOString().split('T')[0];
+
+        const diff = Math.abs(current - target);
+        if (diff === 0) return new Date().toISOString().split('T')[0];
+
+        // Max safe rate: 2 lbs/week for loss, 1 lb/week for gain
+        let maxRatePerWeek = 2; 
+        if (formData.goal === 'gain') maxRatePerWeek = 1;
+        
+        if (formData.weightUnit === 'kg') {
+             maxRatePerWeek = formData.goal === 'gain' ? 0.5 : 1;
+        }
+
+        const weeksNeeded = diff / maxRatePerWeek;
+        const daysNeeded = Math.ceil(weeksNeeded * 7);
+        
+        const minDate = new Date();
+        minDate.setDate(minDate.getDate() + daysNeeded);
+        
+        return minDate.toISOString().split('T')[0];
+    };
 
     const handleSubmit = () => {
         // Normalize to Metric before sending
@@ -71,6 +107,16 @@ export default function OnboardingForm({ onComplete, onCancel, isEditing = false
             data.customFats = Math.round((cals * (f / 100)) / 9);
         }
 
+        // Pass goal weight and target date if lose/gain/custom
+        if (formData.goal === 'lose' || formData.goal === 'gain' || formData.goal === 'custom') {
+            let goalWeightKg = parseFloat(formData.goalWeight);
+            if (formData.weightUnit === 'lbs') {
+                goalWeightKg = goalWeightKg * 0.453592;
+            }
+            data.goalWeight = goalWeightKg;
+            data.targetDate = formData.targetDate;
+        }
+
         onComplete(data);
     };
 
@@ -88,8 +134,8 @@ export default function OnboardingForm({ onComplete, onCancel, isEditing = false
                 <div className="w-full max-w-md">
                     {/* Progress Bar */}
                     <div className="flex gap-2 mb-8">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= step ? 'bg-indigo-600' : 'bg-slate-100'}`} />
+                        {[1, 2, 3, 4].map(i => (
+                            <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= step ? 'bg-indigo-600' : 'bg-slate-100'} ${i === 4 && formData.goal === 'maintain' ? 'hidden' : ''}`} />
                         ))}
                     </div>
 
@@ -98,11 +144,13 @@ export default function OnboardingForm({ onComplete, onCancel, isEditing = false
                             {step === 1 && (isEditing ? "Update your details" : "Tell us about yourself")}
                             {step === 2 && "How active are you?"}
                             {step === 3 && (formData.goal === 'custom' ? "Set your custom targets" : "What is your goal?")}
+                            {step === 4 && "Set your timeline"}
                         </h1>
                         <p className="text-slate-500">
                             {step === 1 && "We'll use this to calculate your personalized plan."}
                             {step === 2 && "Be honest! This helps us estimate your daily burn."}
                             {step === 3 && (formData.goal === 'custom' ? "Enter your preferred daily targets." : "We'll adjust your calorie target based on this.")}
+                            {step === 4 && "When do you want to reach your goal?"}
                         </p>
                     </div>
 
@@ -295,6 +343,43 @@ export default function OnboardingForm({ onComplete, onCancel, isEditing = false
                         </div>
                     )}
 
+                    {/* Step 4: Timeline (Lose/Gain/Custom) */}
+                    {step === 4 && (
+                        <div className="space-y-4 animate-in slide-in-from-right-4 fade-in">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Goal Weight ({formData.weightUnit})</label>
+                                <div className="relative">
+                                    <Target className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                    <input
+                                        type="number"
+                                        value={formData.goalWeight}
+                                        onChange={e => setFormData({ ...formData, goalWeight: e.target.value })}
+                                        className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-bold text-slate-800"
+                                        placeholder={formData.goal === 'lose' ? "e.g. 180" : "e.g. 160"}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Target Date</label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                    <input
+                                        type="date"
+                                        value={formData.targetDate}
+                                        min={getMinTargetDate()}
+                                        onChange={e => setFormData({ ...formData, targetDate: e.target.value })}
+                                        className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-bold text-slate-800"
+                                    />
+                                </div>
+                                {formData.goalWeight && (
+                                    <p className="text-xs text-slate-400 mt-2 ml-1">
+                                        Minimum date based on safe {formData.goal === 'gain' ? 'gain' : 'loss'} of {formData.goal === 'gain' ? '1' : '2'} {formData.weightUnit}/week
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Navigation */}
                     <div className="mt-8 flex gap-4">
                         {step > 1 && (
@@ -306,7 +391,7 @@ export default function OnboardingForm({ onComplete, onCancel, isEditing = false
                             </button>
                         )}
                         <button
-                            onClick={step === 3 ? handleSubmit : handleNext}
+                            onClick={step === 4 || (step === 3 && formData.goal === 'maintain') ? handleSubmit : handleNext}
                             disabled={
                                 (step === 1 && (!formData.age || !formData.weight || !formData.heightFt)) ||
                                 (step === 3 && formData.goal === 'custom' && (
@@ -317,7 +402,8 @@ export default function OnboardingForm({ onComplete, onCancel, isEditing = false
                                     (parseInt(formData.customProteinPercent || 0) + 
                                      parseInt(formData.customCarbsPercent || 0) + 
                                      parseInt(formData.customFatsPercent || 0)) !== 100
-                                ))
+                                )) ||
+                                (step === 4 && (!formData.goalWeight || !formData.targetDate))
                             }
                             className={`flex-1 py-3.5 rounded-xl font-bold text-white transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 ${(step === 1 && (!formData.age || !formData.weight || !formData.heightFt)) ||
                                     (step === 3 && formData.goal === 'custom' && (
@@ -328,12 +414,13 @@ export default function OnboardingForm({ onComplete, onCancel, isEditing = false
                                         (parseInt(formData.customProteinPercent || 0) + 
                                          parseInt(formData.customCarbsPercent || 0) + 
                                          parseInt(formData.customFatsPercent || 0)) !== 100
-                                    ))
+                                    )) ||
+                                    (step === 4 && (!formData.goalWeight || !formData.targetDate))
                                     ? 'bg-slate-300 cursor-not-allowed shadow-none'
                                     : 'bg-indigo-600 hover:bg-indigo-700'
                                 }`}
                         >
-                            {step === 3 ? (
+                            {step === 4 || (step === 3 && formData.goal === 'maintain') ? (
                                 <>
                                     {isEditing ? "Update Plan" : "Complete Setup"} <Check className="w-5 h-5" />
                                 </>
