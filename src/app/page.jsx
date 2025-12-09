@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Utensils, LogOut, Home, Plus, Calendar, Settings, Dumbbell } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
-import { getLogs, getUserSettings, updateUserSettings, updateLog, getDailyStats, updateDailyStats, getWorkoutLogs } from '@/lib/api';
+import { getLogs, getUserSettings, updateUserSettings, updateLog, getDailyStats, updateDailyStats, getWorkoutLogs, getActiveWorkoutLogs } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
 import Dashboard from '@/components/Dashboard';
 import AddFood from '@/components/AddFood';
@@ -32,6 +32,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [logs, setLogs] = useState([]);
   const [workoutLogs, setWorkoutLogs] = useState([]);
+  const [activeWorkoutLogs, setActiveWorkoutLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dailyGoal, setDailyGoal] = useState(2000);
   const [macroGoals, setMacroGoals] = useState({ protein: 150, carbs: 200, fats: 65 });
@@ -59,14 +60,16 @@ export default function App() {
   const fetchData = async () => {
     if (!user) return;
     try {
-      const [fetchedLogs, fetchedWorkoutLogs, settings, dailyStats] = await Promise.all([
+      const [fetchedLogs, fetchedWorkoutLogs, fetchedActiveWorkoutLogs, settings, dailyStats] = await Promise.all([
         getLogs(user.id),
         getWorkoutLogs(),
+        getActiveWorkoutLogs(),
         getUserSettings(user.id),
         getDailyStats(new Date().toISOString().split('T')[0])
       ]);
       setLogs(fetchedLogs);
       setWorkoutLogs(fetchedWorkoutLogs);
+      setActiveWorkoutLogs(fetchedActiveWorkoutLogs);
       if (settings) {
         if (settings.is_new_user) {
           setShowOnboarding(true);
@@ -252,7 +255,12 @@ export default function App() {
               />
             )}
             {activeTab === 'workouts' && (
-              <WorkoutView user={user} onWorkoutComplete={fetchData} />
+              <WorkoutView 
+                user={user} 
+                onWorkoutComplete={fetchData} 
+                initialLogs={activeWorkoutLogs}
+                onUpdateLogs={setActiveWorkoutLogs}
+              />
             )}
             {activeTab === 'add' && (
               <AddFood 

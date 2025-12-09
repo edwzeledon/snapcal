@@ -100,6 +100,12 @@ export async function getWorkoutLogs() {
   return response.json();
 }
 
+export async function getActiveWorkoutLogs() {
+  const response = await fetch('/api/workouts/logs'); // Defaults to active
+  if (!response.ok) throw new Error('Failed to fetch active workout logs');
+  return response.json();
+}
+
 export async function deleteWorkoutLog(logId) {
   const response = await fetch(`/api/workouts/logs/${logId}`, {
     method: 'DELETE'

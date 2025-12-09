@@ -4,8 +4,24 @@ import WorkoutCard from './WorkoutCard';
 import PickerView from './PickerView';
 import ConfirmModal from '../ConfirmModal';
 
-export default function WorkoutView({ user, onWorkoutComplete }) {
-  const [workoutLogs, setWorkoutLogs] = useState([]);
+export default function WorkoutView({ user, onWorkoutComplete, initialLogs = [], onUpdateLogs }) {
+  // Use props for logs if available, otherwise fallback to local state (though props should always be there now)
+  const [localLogs, setLocalLogs] = useState([]);
+  const workoutLogs = onUpdateLogs ? initialLogs : localLogs;
+  
+  const setWorkoutLogs = (newLogsOrFn) => {
+    if (onUpdateLogs) {
+      // Handle functional updates if passed
+      if (typeof newLogsOrFn === 'function') {
+        onUpdateLogs(prev => newLogsOrFn(prev));
+      } else {
+        onUpdateLogs(newLogsOrFn);
+      }
+    } else {
+      setLocalLogs(newLogsOrFn);
+    }
+  };
+
   const [showPicker, setShowPicker] = useState(false);
   const [completedAnimation, setCompletedAnimation] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
@@ -101,20 +117,41 @@ export default function WorkoutView({ user, onWorkoutComplete }) {
   };
 
   useEffect(() => {
-    fetchLogs();
+    // Only fetch logs if we are NOT using parent state (fallback)
+    if (!onUpdateLogs) {
+      fetchLogs();
+    }
     fetchTemplates();
   }, [user]);
 
   const handleAddExerciseToDay = async (exercise) => {
     if (!user) return;
     
+    // Fetch last log for this exercise to prefill
+    let initialSets = [{ weight: '', reps: '', completed: false }];
+    try {
+      const res = await fetch(`/api/workouts/history/last?exercise=${encodeURIComponent(exercise.name)}`);
+      if (res.ok) {
+        const lastLog = await res.json();
+        if (lastLog && lastLog.sets && lastLog.sets.length > 0) {
+          initialSets = lastLog.sets.map(s => ({
+            weight: s.weight,
+            reps: s.reps,
+            completed: false
+          }));
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching last log", e);
+    }
+
     // 1. Optimistic Update: Add temp card immediately
     const tempId = `temp-${Date.now()}`;
     const tempLog = {
       id: tempId,
       exercise_name: exercise.name,
       category: exercise.category,
-      sets: [{ weight: '', reps: '', completed: false }],
+      sets: initialSets,
       date: new Date().toISOString()
     };
 
@@ -128,7 +165,7 @@ export default function WorkoutView({ user, onWorkoutComplete }) {
         body: JSON.stringify({
           exercise: exercise.name,
           category: exercise.category,
-          sets: [{ weight: '', reps: '', completed: false }],
+          sets: initialSets,
           date: new Date().toISOString()
         })
       });
@@ -159,7 +196,7 @@ export default function WorkoutView({ user, onWorkoutComplete }) {
           exercises: workoutLogs.map(l => ({ 
             exercise: l.exercise_name || l.exercise, 
             category: l.category, 
-            sets: l.sets.map(s => ({ ...s, completed: false })) 
+            sets: l.sets.map(s => ({ weight: '', reps: '', completed: false })) 
           }))
         })
       });
@@ -177,18 +214,42 @@ export default function WorkoutView({ user, onWorkoutComplete }) {
   const handleLoadTemplate = async (template) => {
     if (!user) return;
     try {
-      const promises = template.exercises.map(ex => 
-        fetch('/api/workouts/logs', {
+      const promises = template.exercises.map(async (ex) => {
+        // Fetch last log for prefill
+        let setsToUse = ex.sets;
+        try {
+          const res = await fetch(`/api/workouts/history/last?exercise=${encodeURIComponent(ex.exercise)}`);
+          if (res.ok) {
+            const lastLog = await res.json();
+            if (lastLog && lastLog.sets) {
+              // Merge template structure with history values
+              setsToUse = ex.sets.map((templateSet, index) => {
+                const historySet = lastLog.sets[index];
+                return {
+                  ...templateSet,
+                  weight: historySet ? historySet.weight : '',
+                  reps: historySet ? historySet.reps : '',
+                  completed: false
+                };
+              });
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching history for template load", e);
+        }
+
+        return fetch('/api/workouts/logs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             exercise: ex.exercise,
             category: ex.category,
-            sets: ex.sets,
+            sets: setsToUse,
             date: new Date().toISOString()
           })
-        })
-      );
+        });
+      });
+
       await Promise.all(promises);
       fetchLogs();
       setShowLoadTemplate(false);
@@ -262,9 +323,29 @@ export default function WorkoutView({ user, onWorkoutComplete }) {
     });
   }
 
+  // Summary State
+  const [summaryData, setSummaryData] = useState({ duration: 0, count: 0 });
+
   const submitWorkout = async () => {
     if (!user) return;
     try {
+      // 1. Prune incomplete sets for each log before finishing
+      // This ensures only "Done" sets are saved to history
+      const updatePromises = workoutLogs.map(log => {
+        const completedSets = log.sets.filter(s => s.completed);
+        // Only update if we are actually removing incomplete sets
+        if (completedSets.length !== log.sets.length) {
+             return fetch(`/api/workouts/logs/${log.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sets: completedSets })
+             });
+        }
+        return Promise.resolve();
+      });
+
+      await Promise.all(updatePromises);
+
       const res = await fetch('/api/workouts/finish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -275,6 +356,12 @@ export default function WorkoutView({ user, onWorkoutComplete }) {
       });
 
       if (res.ok) {
+        // Capture summary data BEFORE clearing logs via onWorkoutComplete
+        setSummaryData({
+          duration: elapsedTime,
+          count: workoutLogs.length
+        });
+        
         setCompletedAnimation(true);
         setShowSummary(true);
         if (timerInterval) clearInterval(timerInterval);
@@ -289,14 +376,14 @@ export default function WorkoutView({ user, onWorkoutComplete }) {
   const handleCompleteWorkout = async () => {
     // Check for incomplete sets
     const hasIncompleteSets = workoutLogs.some(log => 
-      log.sets.some(set => !set.completed || !set.weight || !set.reps)
+      log.sets.some(set => !set.completed)
     );
 
     if (hasIncompleteSets) {
       setConfirmModal({
         isOpen: true,
         title: 'Incomplete Sets',
-        message: 'You have incomplete sets. Are you sure you want to finish this workout?',
+        message: 'Any incomplete sets will be discarded. Are you sure you want to finish?',
         isDestructive: false,
         confirmText: 'Finish Anyway',
         onConfirm: async () => {
@@ -389,11 +476,11 @@ export default function WorkoutView({ user, onWorkoutComplete }) {
             <div className="grid grid-cols-2 gap-4 w-full mb-6">
               <div className="bg-slate-50 p-4 rounded-2xl">
                 <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Duration</p>
-                <p className="text-xl font-bold text-slate-800">{formatTime(elapsedTime)}</p>
+                <p className="text-xl font-bold text-slate-800">{formatTime(summaryData.duration)}</p>
               </div>
               <div className="bg-slate-50 p-4 rounded-2xl">
                 <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Exercises</p>
-                <p className="text-xl font-bold text-slate-800">{workoutLogs.length}</p>
+                <p className="text-xl font-bold text-slate-800">{summaryData.count}</p>
               </div>
             </div>
 

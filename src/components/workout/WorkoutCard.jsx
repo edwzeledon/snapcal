@@ -42,7 +42,16 @@ export default function WorkoutCard({ log, onDelete, onUpdate }) {
   }, [log.id]);
 
   const addSet = () => {
-    const newSets = [...sets, { weight: '', reps: '', completed: false }];
+    let previousWeight = '';
+    let previousReps = '';
+    
+    if (sets.length > 0) {
+      const lastSet = sets[sets.length - 1];
+      previousWeight = lastSet.weight;
+      previousReps = lastSet.reps;
+    }
+
+    const newSets = [...sets, { weight: previousWeight, reps: previousReps, completed: false }];
     setSets(newSets);
     updateParent(newSets);
     saveSets(newSets);
@@ -63,6 +72,14 @@ export default function WorkoutCard({ log, onDelete, onUpdate }) {
   };
 
   const toggleSetCompletion = (index) => {
+    const set = sets[index];
+    // Validation: Can only mark as done if both fields are filled
+    if (!set.completed) {
+      if (!set.weight || !set.reps) {
+        return; // Do nothing if incomplete
+      }
+    }
+
     const newSets = [...sets];
     newSets[index].completed = !newSets[index].completed;
     setSets(newSets);
@@ -71,8 +88,21 @@ export default function WorkoutCard({ log, onDelete, onUpdate }) {
   };
 
   const quickFinish = () => {
-    const allCompleted = sets.every(s => s.completed);
-    const newSets = sets.map(s => ({ ...s, completed: !allCompleted }));
+    const allCompleted = sets.length > 0 && sets.every(s => s.completed);
+    const targetState = !allCompleted;
+
+    const newSets = sets.map(s => {
+      // If we are marking as done, only mark if fields are filled
+      if (targetState) {
+        if (s.weight && s.reps) {
+          return { ...s, completed: true };
+        }
+        return s;
+      }
+      // If marking as not done, just uncheck
+      return { ...s, completed: false };
+    });
+
     setSets(newSets);
     updateParent(newSets);
     saveSets(newSets);
@@ -172,7 +202,9 @@ export default function WorkoutCard({ log, onDelete, onUpdate }) {
                 className={`p-1.5 rounded-lg transition-all shadow-sm ${
                   set.completed 
                     ? 'bg-green-500 text-white ring-2 ring-green-200' 
-                    : 'bg-slate-200 text-slate-400 hover:bg-slate-300'
+                    : (!set.weight || !set.reps) 
+                      ? 'bg-slate-100 text-slate-300 cursor-not-allowed' 
+                      : 'bg-slate-200 text-slate-400 hover:bg-slate-300'
                 }`}
               >
                 {set.completed ? <Check className="w-5 h-5" /> : <Check className="w-5 h-5 opacity-0" />}
