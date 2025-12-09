@@ -93,3 +93,23 @@ export async function updateDailyStats(data) {
   if (!response.ok) throw new Error('Failed to update daily stats');
   return response.json();
 }
+
+export async function getWorkoutLogs() {
+  const response = await fetch('/api/workouts/logs?status=completed');
+  if (!response.ok) throw new Error('Failed to fetch workout logs');
+  return response.json();
+}
+
+export async function deleteWorkoutLog(logId) {
+  const response = await fetch(`/api/workouts/logs/${logId}`, {
+    method: 'DELETE'
+  });
+  if (!response.ok) throw new Error('Failed to delete workout log');
+  return true;
+}
+
+export async function getExercises() {
+  const response = await fetch('/api/exercises');
+  if (!response.ok) throw new Error('Failed to fetch exercises');
+  return response.json();
+}

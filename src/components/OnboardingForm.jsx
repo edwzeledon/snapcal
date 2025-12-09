@@ -5,8 +5,8 @@ const ACTIVITY_LEVELS = [
     { id: 'sedentary', label: 'Sedentary', description: 'Little or no exercise', factor: 1.2 },
     { id: 'light', label: 'Lightly Active', description: 'Exercise 1-3 times/week', factor: 1.375 },
     { id: 'moderate', label: 'Moderately Active', description: 'Exercise 4-5 times/week', factor: 1.55 },
-    { id: 'active', label: 'Very Active', description: 'Daily exercise or intense exercise 3-4 times/week', factor: 1.725 },
-    { id: 'extra', label: 'Extra Active', description: 'Intense exercise daily or physical job', factor: 1.9 }
+    { id: 'active', label: 'Very Active', description: 'Intense exercise 6-7 times/week', factor: 1.725 },
+    { id: 'extra', label: 'Extra Active', description: 'Very intense exercise daily, or physical job', factor: 1.9 }
 ];
 
 const GOALS = [

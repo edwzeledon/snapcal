@@ -111,7 +111,7 @@ export default function WeightTrend({ user }) {
 
   return (
     <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="p-2 bg-rose-100 rounded-xl text-rose-600">
@@ -140,8 +140,8 @@ export default function WeightTrend({ user }) {
       </div>
 
       {/* Current Weight & Input */}
-      <div className="flex items-end gap-4 mb-8">
-        <div className="flex-1">
+      <div className="flex flex-wrap justify-between items-end gap-6 mb-8">
+        <div className="min-w-[140px]">
           <div className="flex items-baseline gap-2">
             <span className="text-4xl font-black text-slate-800">
               {(() => {
@@ -247,7 +247,7 @@ export default function WeightTrend({ user }) {
                 stroke="#4f46e5"
                 strokeWidth={2}
                 connectNulls={true}
-                dot={{ r: 4, fill: '#4f46e5', strokeWidth: 0 }} 
+                dot={range === '90days' ? false : { r: 4, fill: '#4f46e5', strokeWidth: 0 }} 
                 activeDot={{ r: 6, fill: '#4f46e5' }}
                 isAnimationActive={false}
               />

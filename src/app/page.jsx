@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Utensils, LogOut, Home, Plus, Calendar, Settings } from 'lucide-react';
+import { Loader2, Utensils, LogOut, Home, Plus, Calendar, Settings, Dumbbell } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
-import { getLogs, getUserSettings, updateUserSettings, updateLog, getDailyStats, updateDailyStats } from '@/lib/api';
+import { getLogs, getUserSettings, updateUserSettings, updateLog, getDailyStats, updateDailyStats, getWorkoutLogs } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
 import Dashboard from '@/components/Dashboard';
 import AddFood from '@/components/AddFood';
@@ -11,6 +11,9 @@ import HistoryView from '@/components/HistoryView';
 import EditFoodModal from '@/components/EditFoodModal';
 import LandingPage from '@/components/landing-page/LandingPage';
 import OnboardingForm from '@/components/OnboardingForm';
+import WorkoutView from '@/components/workout/WorkoutView';
+
+import SettingsView from '@/components/SettingsView';
 
 const NavButton = ({ active, onClick, icon: Icon, label }) => (
   <button 
@@ -28,12 +31,14 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('home');
   const [logs, setLogs] = useState([]);
+  const [workoutLogs, setWorkoutLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dailyGoal, setDailyGoal] = useState(2000);
   const [macroGoals, setMacroGoals] = useState({ protein: 150, carbs: 200, fats: 65 });
   const [editingLog, setEditingLog] = useState(null);
   const [scanCount, setScanCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isRetakingAssessment, setIsRetakingAssessment] = useState(false);
 
   // --- Auth & Data Fetching ---
   useEffect(() => {
@@ -54,12 +59,14 @@ export default function App() {
   const fetchData = async () => {
     if (!user) return;
     try {
-      const [fetchedLogs, settings, dailyStats] = await Promise.all([
+      const [fetchedLogs, fetchedWorkoutLogs, settings, dailyStats] = await Promise.all([
         getLogs(user.id),
+        getWorkoutLogs(),
         getUserSettings(user.id),
         getDailyStats(new Date().toISOString().split('T')[0])
       ]);
       setLogs(fetchedLogs);
+      setWorkoutLogs(fetchedWorkoutLogs);
       if (settings) {
         if (settings.is_new_user) {
           setShowOnboarding(true);
@@ -244,6 +251,9 @@ export default function App() {
                 onAddMeal={() => setActiveTab('add')}
               />
             )}
+            {activeTab === 'workouts' && (
+              <WorkoutView user={user} onWorkoutComplete={fetchData} />
+            )}
             {activeTab === 'add' && (
               <AddFood 
                 user={user} 
@@ -258,20 +268,28 @@ export default function App() {
             {activeTab === 'history' && (
               <HistoryView 
                 logs={logs}
+                workoutLogs={workoutLogs}
                 user={user}
                 onLogDeleted={fetchData}
                 onEditLog={setEditingLog}
               />
             )}
             {activeTab === 'settings' && (
-              <OnboardingForm 
-                isEditing={true}
-                onComplete={(data) => {
-                  handleOnboardingComplete(data);
-                  setActiveTab('home');
-                }}
-                onCancel={() => setActiveTab('home')}
-              />
+              isRetakingAssessment ? (
+                <OnboardingForm 
+                  isEditing={true}
+                  onComplete={(data) => {
+                    handleOnboardingComplete(data);
+                    setIsRetakingAssessment(false);
+                    setActiveTab('home');
+                  }}
+                  onCancel={() => {
+                    setIsRetakingAssessment(false);
+                  }}
+                />
+              ) : (
+                <SettingsView onRetakeAssessment={() => setIsRetakingAssessment(true)} />
+              )
             )}
           </div>
         </main>
@@ -285,10 +303,10 @@ export default function App() {
             label="Home" 
           />
           <NavButton 
-            active={activeTab === 'history'} 
-            onClick={() => setActiveTab('history')} 
-            icon={Calendar} 
-            label="History" 
+            active={activeTab === 'workouts'} 
+            onClick={() => setActiveTab('workouts')} 
+            icon={Dumbbell} 
+            label="Workouts" 
           />
           
           <div className="-mt-12">
@@ -305,16 +323,16 @@ export default function App() {
           </div>
 
           <NavButton 
+            active={activeTab === 'history'} 
+            onClick={() => setActiveTab('history')} 
+            icon={Calendar} 
+            label="History" 
+          />
+          <NavButton 
             active={activeTab === 'settings'} 
             onClick={() => setActiveTab('settings')} 
             icon={Settings} 
             label="Settings" 
-          />
-          <NavButton 
-            active={false} 
-            onClick={handleLogout} 
-            icon={LogOut} 
-            label="Logout" 
           />
         </nav>
         
