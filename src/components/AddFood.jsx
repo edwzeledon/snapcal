@@ -45,7 +45,7 @@ export default function AddFood({ user, onSuccess, onCancel, initialScanCount = 
   // Initialize scan count from prop
   useEffect(() => {
     setScanCount(initialScanCount);
-    if (initialScanCount >= 3 && mode === 'scan') {
+    if (initialScanCount >= MAX_DAILY_SCANS && mode === 'scan') {
       setMode('manual');
     }
   }, [initialScanCount]);
@@ -254,17 +254,17 @@ export default function AddFood({ user, onSuccess, onCancel, initialScanCount = 
           <div className="flex p-1 bg-slate-100 rounded-xl mb-6">
             <button 
               onClick={() => { 
-                if (!preview && scanCount < 3) {
+                if (!preview && scanCount < MAX_DAILY_SCANS) {
                   setMode('scan'); 
                   stopCamera(); 
                   setPreview(null); 
                 }
               }}
-              disabled={scanCount >= 3}
+              disabled={scanCount >= MAX_DAILY_SCANS}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
                 mode === 'scan' 
                   ? 'bg-white text-indigo-600 shadow-sm' 
-                  : scanCount >= 3
+                  : scanCount >= MAX_DAILY_SCANS
                     ? 'text-slate-300 cursor-not-allowed'
                     : 'text-slate-500 hover:text-slate-700'
               }`}
@@ -324,9 +324,9 @@ export default function AddFood({ user, onSuccess, onCancel, initialScanCount = 
                   <div className="flex flex-col gap-4 w-full px-8 text-center">
                     <button 
                       onClick={startCamera}
-                      disabled={scanCount >= 3}
+                      disabled={scanCount >= MAX_DAILY_SCANS}
                       className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-colors shadow-lg ${
-                        scanCount >= 3 
+                        scanCount >= MAX_DAILY_SCANS 
                           ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none' 
                           : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
                       }`}
@@ -341,9 +341,9 @@ export default function AddFood({ user, onSuccess, onCancel, initialScanCount = 
                     </div>
                     <button 
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={scanCount >= 3}
+                      disabled={scanCount >= MAX_DAILY_SCANS}
                       className={`w-full py-4 border rounded-2xl font-bold flex items-center justify-center gap-3 transition-colors ${
-                        scanCount >= 3
+                        scanCount >= MAX_DAILY_SCANS
                           ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
                           : 'bg-white text-indigo-600 border-indigo-100 hover:bg-indigo-50'
                       }`}
