@@ -33,7 +33,7 @@ export async function GET(request) {
 
   let query = supabase
     .from('workout_logs')
-    .select('*')
+    .select('*, workout_sessions!inner(status, duration_seconds)')
     .eq('user_id', user.id)
     .order('date', { ascending: true });
 
@@ -46,8 +46,8 @@ export async function GET(request) {
     // Filter by session ID
     query = query.eq('session_id', sessionId);
   } else if (status) {
-    // Fallback for legacy or specific status queries
-    query = query.eq('status', status);
+    // Filter by SESSION status
+    query = query.eq('workout_sessions.status', status);
   }
 
   const { data, error } = await query;
@@ -56,7 +56,14 @@ export async function GET(request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  // Map session data to top level for frontend compatibility
+  const enrichedData = data.map(log => ({
+    ...log,
+    duration: log.workout_sessions?.duration_seconds || log.duration, // Prefer session duration
+    status: log.workout_sessions?.status || log.status
+  }));
+
+  return NextResponse.json(enrichedData);
 }
 
 export async function POST(request) {
@@ -104,8 +111,8 @@ export async function POST(request) {
         exercise_name: body.exercise,
         category: body.category,
         sets: body.sets || [],
-        date: body.date || new Date().toISOString(),
-        status: 'active'
+        date: body.date || new Date().toISOString()
+        // status removed - relies on session status
       }
     ])
     .select()
