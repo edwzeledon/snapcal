@@ -47,15 +47,15 @@ export default function OnboardingForm({ onComplete, onCancel, isEditing = false
     const handleBack = () => setStep(prev => prev - 1);
 
     const getMinTargetDate = () => {
-        if (!formData.weight || !formData.goalWeight) return new Date().toISOString().split('T')[0];
+        if (!formData.weight || !formData.goalWeight) return new Date().toLocaleDateString('en-CA');
         
         const current = parseFloat(formData.weight);
         const target = parseFloat(formData.goalWeight);
         
-        if (isNaN(current) || isNaN(target)) return new Date().toISOString().split('T')[0];
+        if (isNaN(current) || isNaN(target)) return new Date().toLocaleDateString('en-CA');
 
         const diff = Math.abs(current - target);
-        if (diff === 0) return new Date().toISOString().split('T')[0];
+        if (diff === 0) return new Date().toLocaleDateString('en-CA');
 
         // Max safe rate: 2 lbs/week for loss, 1 lb/week for gain
         let maxRatePerWeek = 2; 
@@ -71,7 +71,7 @@ export default function OnboardingForm({ onComplete, onCancel, isEditing = false
         const minDate = new Date();
         minDate.setDate(minDate.getDate() + daysNeeded);
         
-        return minDate.toISOString().split('T')[0];
+        return minDate.toLocaleDateString('en-CA');
     };
 
     const handleSubmit = () => {

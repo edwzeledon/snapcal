@@ -39,7 +39,15 @@ export async function POST(request) {
     const { type, todaysLogs, dailyGoal, caloriesToday, remaining } = await request.json();
 
     // Check Limits
-    const today = new Date().toISOString().split('T')[0];
+    const { data: settings } = await supabase
+      .from('user_settings')
+      .select('timezone')
+      .eq('user_id', user.id)
+      .single();
+
+    const userTimezone = settings?.timezone || 'UTC';
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: userTimezone });
+
     const { data: stats } = await supabase
       .from('daily_stats')
       .select('overview_count, suggestion_count')

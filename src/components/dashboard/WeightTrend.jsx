@@ -32,7 +32,7 @@ export default function WeightTrend({ user }) {
       for (let i = days - 1; i >= 0; i--) {
         const d = new Date();
         d.setDate(today.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = d.toLocaleDateString('en-CA');
         fullHistory.push({
           date: dateStr,
           weight: dataMap.get(dateStr) || null
@@ -42,7 +42,7 @@ export default function WeightTrend({ user }) {
       setHistory(fullHistory);
       
       // Check if we have today's weight
-      const todayStr = today.toISOString().split('T')[0];
+      const todayStr = today.toLocaleDateString('en-CA');
       const todayEntry = data.find(d => d.date === todayStr);
       if (todayEntry) {
         setTodayWeight(todayEntry.weight);
@@ -58,7 +58,7 @@ export default function WeightTrend({ user }) {
     if (!todayWeight || !user) return;
     
     const weightVal = parseFloat(todayWeight);
-    const todayDate = new Date().toISOString().split('T')[0];
+    const todayDate = new Date().toLocaleDateString('en-CA');
 
     // Optimistic Update
     setHistory(prev => {

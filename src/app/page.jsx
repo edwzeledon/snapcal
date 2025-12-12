@@ -67,7 +67,7 @@ export default function App() {
         getWorkoutLogs(),
         getActiveWorkoutLogs(),
         getUserSettings(user.id),
-        getDailyStats(new Date().toISOString().split('T')[0])
+        getDailyStats(new Date().toLocaleDateString('en-CA'))
       ]);
       setLogs(fetchedLogs);
       setWorkoutLogs(fetchedWorkoutLogs);
@@ -77,9 +77,15 @@ export default function App() {
           setShowOnboarding(true);
         }
         if (settings.daily_goal) setDailyGoal(settings.daily_goal);
+
+        // Sync Timezone
+        const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (settings.timezone !== browserTimezone) {
+             updateUserSettings(user.id, { timezone: browserTimezone });
+        }
         
         // Streak Calculation
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('en-CA');
         const lastLog = settings.last_log_date;
         let currentStreak = settings.current_streak || 0;
         let status = 'broken';
@@ -175,7 +181,7 @@ export default function App() {
     if (data.originalWeight) {
         try {
             await updateDailyStats({
-                date: new Date().toISOString().split('T')[0],
+                date: new Date().toLocaleDateString('en-CA'),
                 weight: data.originalWeight
             });
         } catch (e) {

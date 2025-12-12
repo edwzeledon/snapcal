@@ -1,8 +1,12 @@
 export async function addLog(userId, logData) {
+  const payload = {
+    ...logData,
+    localDate: new Date().toLocaleDateString('en-CA')
+  };
   const response = await fetch('/api/logs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(logData)
+    body: JSON.stringify(payload)
   });
   if (!response.ok) throw new Error('Failed to add log');
   return response.json();
@@ -49,10 +53,14 @@ export async function updateUserSettings(userId, settings) {
 }
 
 export async function callGeminiText(data) {
+  const payload = {
+    ...data,
+    localDate: new Date().toLocaleDateString('en-CA')
+  };
   const response = await fetch('/api/gemini/text', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    body: JSON.stringify(payload)
   });
   const result = await response.json();
   if (result.error) throw new Error(result.error);
@@ -63,7 +71,11 @@ export async function analyzeImageWithGemini(base64Data, mimeType) {
   const response = await fetch('/api/gemini/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ base64Data, mimeType })
+    body: JSON.stringify({ 
+      base64Data, 
+      mimeType,
+      localDate: new Date().toLocaleDateString('en-CA')
+    })
   });
   const data = await response.json();
   if (data.error) throw new Error(data.error);

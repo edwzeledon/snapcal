@@ -37,7 +37,16 @@ export async function POST(request) {
   }
 
   // Check Daily Limit
-  const today = new Date().toISOString().split('T')[0];
+  // Fetch user timezone to enforce server-side date calculation
+  const { data: settings } = await supabase
+    .from('user_settings')
+    .select('timezone')
+    .eq('user_id', user.id)
+    .single();
+
+  const userTimezone = settings?.timezone || 'UTC';
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: userTimezone });
+  
   const { data: stats } = await supabase
     .from('daily_stats')
     .select('scan_count')

@@ -27,7 +27,7 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
 
   const loadDailyStats = async () => {
     try {
-      const dateStr = new Date().toISOString().split('T')[0];
+      const dateStr = new Date().toLocaleDateString('en-CA');
       const stats = await getDailyStats(dateStr);
 
       if (stats) {
@@ -51,7 +51,7 @@ export default function Dashboard({ caloriesToday, dailyGoal, macroGoals, percen
     
     try {
       await updateDailyStats({ 
-        date: new Date().toISOString().split('T')[0], 
+        date: new Date().toLocaleDateString('en-CA'), 
         water_intake: safeAmount 
       });
     } catch (error) {

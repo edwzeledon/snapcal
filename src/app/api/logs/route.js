@@ -57,7 +57,7 @@ export async function POST(request) {
 
   // --- Streak Logic ---
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = body.localDate || new Date().toISOString().split('T')[0];
     
     const { data: settings } = await supabase
       .from('user_settings')
@@ -73,7 +73,9 @@ export async function POST(request) {
       if (lastLogDate === today) {
         // Already logged today, do nothing
       } else {
-        const yesterday = new Date();
+        // Calculate yesterday based on the 'today' date string (YYYY-MM-DD)
+        const todayDateObj = new Date(today); 
+        const yesterday = new Date(todayDateObj);
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toISOString().split('T')[0];
 
