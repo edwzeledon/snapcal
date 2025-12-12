@@ -107,6 +107,18 @@ export default function HistoryView({ logs, workoutLogs = [], user, onLogDeleted
     return best;
   };
 
+  const formatDuration = (seconds) => {
+    if (!seconds) return 'Completed';
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   // Group by date and sort descending
   const groupedLogs = useMemo(() => {
     const currentLogs = viewMode === 'meals' ? logs : workoutLogs;
@@ -274,7 +286,7 @@ export default function HistoryView({ logs, workoutLogs = [], user, onLogDeleted
                     <div>
                       <h4 className="font-bold text-slate-800 text-lg">Workout Session</h4>
                       <p className="text-xs text-slate-400">
-                        {dayLogs.length} Exercises • {dayLogs[0]?.duration ? Math.floor(dayLogs[0].duration / 60) + 'm ' + (dayLogs[0].duration % 60) + 's' : 'Completed'}
+                        {dayLogs.length} Exercises • {formatDuration(dayLogs[0]?.duration)}
                       </p>
                     </div>
                     <div className="flex gap-1">

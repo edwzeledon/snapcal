@@ -12,18 +12,8 @@ export async function POST(request) {
   const body = await request.json();
   const { ids, duration } = body;
 
-  // 1. Update Logs to Completed
-  if (ids && Array.isArray(ids) && ids.length > 0) {
-      const { error: logsError } = await supabase
-        .from('workout_logs')
-        .update({ status: 'completed' }) // Duration is now on session, not log
-        .in('id', ids)
-        .eq('user_id', user.id);
-
-      if (logsError) {
-        return NextResponse.json({ error: logsError.message }, { status: 500 });
-      }
-  }
+  // 1. Update Logs to Completed - REMOVED (Redundant, status is on session)
+  // We no longer update workout_logs status as it is managed via workout_sessions
 
   // 2. Close the Active Session
   const { error: sessionError } = await supabase

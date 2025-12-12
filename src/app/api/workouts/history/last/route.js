@@ -18,10 +18,10 @@ export async function GET(request) {
 
   const { data, error } = await supabase
     .from('workout_logs')
-    .select('*')
+    .select('*, workout_sessions!inner(status)')
     .eq('user_id', user.id)
     .eq('exercise_name', exerciseName)
-    .eq('status', 'completed')
+    .eq('workout_sessions.status', 'completed')
     .order('date', { ascending: false })
     .limit(1)
     .single();
