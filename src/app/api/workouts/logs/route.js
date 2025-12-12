@@ -13,6 +13,24 @@ export async function GET(request) {
   const date = searchParams.get('date');
   const status = searchParams.get('status');
 
+  // 1. Get Active Session ID first
+  let sessionId = null;
+  if (!date && (!status || status === 'active')) {
+      const { data: activeSession } = await supabase
+        .from('workout_sessions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single();
+      
+      if (activeSession) {
+        sessionId = activeSession.id;
+      } else {
+        // If no active session exists, return empty array for active view
+        if (!date) return NextResponse.json([]);
+      }
+  }
+
   let query = supabase
     .from('workout_logs')
     .select('*')
@@ -21,16 +39,15 @@ export async function GET(request) {
 
   if (date) {
     // Filter by date (start and end of day in UTC)
-    // date is expected to be YYYY-MM-DD
     const startISO = `${date}T00:00:00.000Z`;
     const endISO = `${date}T23:59:59.999Z`;
-    
     query = query.gte('date', startISO).lte('date', endISO);
+  } else if (sessionId) {
+    // Filter by session ID
+    query = query.eq('session_id', sessionId);
   } else if (status) {
+    // Fallback for legacy or specific status queries
     query = query.eq('status', status);
-  } else {
-    // If no date provided, only return active workouts (for the current session view)
-    query = query.eq('status', 'active');
   }
 
   const { data, error } = await query;
@@ -52,11 +69,38 @@ export async function POST(request) {
 
   const body = await request.json();
   
+  // 1. Find or Create Active Session
+  let sessionId = null;
+  
+  const { data: activeSession } = await supabase
+    .from('workout_sessions')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single();
+
+  if (activeSession) {
+    sessionId = activeSession.id;
+  } else {
+    // Create new session
+    const { data: newSession, error: sessionError } = await supabase
+        .from('workout_sessions')
+        .insert([{ user_id: user.id, status: 'active' }])
+        .select()
+        .single();
+    
+    if (sessionError) {
+        return NextResponse.json({ error: "Failed to create session" }, { status: 500 });
+    }
+    sessionId = newSession.id;
+  }
+
   const { data, error } = await supabase
     .from('workout_logs')
     .insert([
       { 
         user_id: user.id,
+        session_id: sessionId,
         exercise_name: body.exercise,
         category: body.category,
         sets: body.sets || [],

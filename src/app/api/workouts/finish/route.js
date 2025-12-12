@@ -12,20 +12,33 @@ export async function POST(request) {
   const body = await request.json();
   const { ids, duration } = body;
 
-  if (!ids || !Array.isArray(ids) || ids.length === 0) {
-    return NextResponse.json({ error: 'No workout logs provided' }, { status: 400 });
+  // 1. Update Logs to Completed
+  if (ids && Array.isArray(ids) && ids.length > 0) {
+      const { error: logsError } = await supabase
+        .from('workout_logs')
+        .update({ status: 'completed' }) // Duration is now on session, not log
+        .in('id', ids)
+        .eq('user_id', user.id);
+
+      if (logsError) {
+        return NextResponse.json({ error: logsError.message }, { status: 500 });
+      }
   }
 
-  const { data, error } = await supabase
-    .from('workout_logs')
-    .update({ status: 'completed', duration: duration })
-    .in('id', ids)
+  // 2. Close the Active Session
+  const { error: sessionError } = await supabase
+    .from('workout_sessions')
+    .update({ 
+        status: 'completed', 
+        ended_at: new Date().toISOString(),
+        duration_seconds: duration 
+    })
     .eq('user_id', user.id)
-    .select();
+    .eq('status', 'active');
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (sessionError) {
+    return NextResponse.json({ error: sessionError.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json({ success: true });
 }
